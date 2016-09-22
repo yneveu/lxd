@@ -216,7 +216,6 @@ func (s *migrationSourceWs) Connect(op *operation, r *http.Request, w http.Respo
 	}
 
 	c, err := shared.WebsocketUpgrader.Upgrade(w, r, nil)
-	shared.LogWarnf("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
 	if err != nil {
 		return err
 	}
