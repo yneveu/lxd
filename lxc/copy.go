@@ -210,29 +210,29 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 		return err
 	}
 
-        // PUSH MODE: We need a second set of websockets + secrets.
-	destWSResponse, err := dest.GetMigrationWS(destName)
-	if err != nil {
-		return err
-	}
+        // // PUSH MODE: We need a second set of websockets + secrets.
+	// destWSResponse, err := dest.GetMigrationWS(destName)
+	// if err != nil {
+	// 	return err
+	// }
 
-	destSecrets := map[string]string{}
+	// destSecrets := map[string]string{}
 
-	op, err = destWSResponse.MetadataAsOperation()
-	if err != nil {
-		return err
-	}
+	// op, err = destWSResponse.MetadataAsOperation()
+	// if err != nil {
+	// 	return err
+	// }
 
-	for k, v := range *op.Metadata {
-		destSecrets[k] = v.(string)
-	}
+	// for k, v := range *op.Metadata {
+	// 	destSecrets[k] = v.(string)
+	// }
 
-	destAddresses, err := dest.Addresses()
-	if err != nil {
-		return err
-	}
-        if destAddresses == nil {
-        }
+	// destAddresses, err := dest.Addresses()
+	// if err != nil {
+	// 	return err
+	// }
+        // if destAddresses == nil {
+        // }
 
 	/* Since we're trying a bunch of different network ports that
 	 * may be invalid, we can get "bad handshake" errors when the
