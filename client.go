@@ -1998,7 +1998,6 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string, 
 
 	source := shared.Jmap{
 		"type":        "migration",
-		"mode":        "pull",
 		"operation":   operation,
 		"certificate": certificate,
 		"secrets":     secrets,
