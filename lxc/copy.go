@@ -188,12 +188,14 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 		}
 	}
 
-	sourceWSResponse, err := source.GetMigrationSourceWS(sourceName)
+        // PULL MODE: We only need one set of websockets + secrets.
+	sourceWSResponse, err := source.GetMigrationWS(sourceName)
 	if err != nil {
 		return err
 	}
+        shared.LogWarnf("sourceWSResponse.MetadataAsStringSlice: %v\n", sourceWSResponse.MetadataAsStringSlice)
 
-	secrets := map[string]string{}
+	sourceSecrets := map[string]string{}
 
 	op, err := sourceWSResponse.MetadataAsOperation()
 	if err != nil {
@@ -201,13 +203,37 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 	}
 
 	for k, v := range *op.Metadata {
-		secrets[k] = v.(string)
+		sourceSecrets[k] = v.(string)
 	}
 
-	addresses, err := source.Addresses()
+	sourceAddresses, err := source.Addresses()
 	if err != nil {
 		return err
 	}
+
+        // PUSH MODE: We need a second set of websockets + secrets.
+	destWSResponse, err := dest.GetMigrationWS(destName)
+	if err != nil {
+		return err
+	}
+
+	destSecrets := map[string]string{}
+
+	op, err = destWSResponse.MetadataAsOperation()
+	if err != nil {
+		return err
+	}
+
+	for k, v := range *op.Metadata {
+		destSecrets[k] = v.(string)
+	}
+
+	destAddresses, err := dest.Addresses()
+	if err != nil {
+		return err
+	}
+        if destAddresses == nil {
+        }
 
 	/* Since we're trying a bunch of different network ports that
 	 * may be invalid, we can get "bad handshake" errors when the
@@ -217,11 +243,11 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 	 * course, if all the errors are websocket errors, let's just
 	 * report that.
 	 */
-	for _, addr := range addresses {
+	for _, addr := range sourceAddresses {
 		var migration *lxd.Response
 
 		sourceWSUrl := "https://" + addr + sourceWSResponse.Operation
-		migration, err = dest.MigrateFrom(destName, sourceWSUrl, source.Certificate, secrets, status.Architecture, status.Config, status.Devices, status.Profiles, baseImage, ephemeral == 1, usePush)
+		migration, err = dest.MigrateFrom(destName, sourceWSUrl, source.Certificate, sourceSecrets, status.Architecture, status.Config, status.Devices, status.Profiles, baseImage, ephemeral == 1, usePush)
 		if err != nil {
 			continue
 		}
