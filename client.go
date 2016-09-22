@@ -2011,6 +2011,8 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string, 
 		source["mode"] = "pull"
 	}
 
+	shared.LogWarnf("source[\"mode\"] == %s\n", source["mode"])
+
 	body := shared.Jmap{
 		"architecture": architecture,
 		"config":       config,
