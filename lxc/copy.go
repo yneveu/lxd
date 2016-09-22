@@ -40,6 +40,18 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 	sourceRemote, sourceName := config.ParseRemoteAndContainer(sourceResource)
 	destRemote, destName := config.ParseRemoteAndContainer(destResource)
 
+        if sourceRemote != "" {
+                shared.LogWarnf("sourceRemote: %s\n", sourceRemote)
+        } else {
+                shared.LogWarnf("sourceRemote: %s\n", "(nil)")
+        }
+
+        if destRemote != "" {
+                shared.LogWarnf("destRemote: %s\n", destRemote)
+        } else {
+                shared.LogWarnf("destRemote: %s\n", "(nil)")
+        }
+
 	if sourceName == "" {
 		return fmt.Errorf(i18n.G("you must specify a source container name"))
 	}
