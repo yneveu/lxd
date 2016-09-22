@@ -210,11 +210,11 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 		return err
 	}
 
-        // // PUSH MODE: We need a second set of websockets + secrets.
-	// destWSResponse, err := dest.GetMigrationWS(destName)
-	// if err != nil {
-	// 	return err
-	// }
+        // PUSH MODE: We need a second set of websockets + secrets.
+	destWSResponse, err := dest.GetMigrationWS(destName)
+	if err != nil {
+		return err
+	}
 
 	// destSecrets := map[string]string{}
 
