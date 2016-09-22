@@ -193,7 +193,9 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 	if err != nil {
 		return err
 	}
-        shared.LogWarnf("sourceWSResponse.MetadataAsStringSlice: %v\n", sourceWSResponse.MetadataAsStringSlice)
+
+        ttt, _ := sourceWSResponse.MetadataAsStringSlice()
+        shared.LogWarnf("sourceWSResponse.MetadataAsStringSlice: %v\n", ttt)
 
 	sourceSecrets := map[string]string{}
 
