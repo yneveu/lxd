@@ -217,6 +217,9 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 	 * course, if all the errors are websocket errors, let's just
 	 * report that.
 	 */
+        if usePush {
+                return nil
+        }
 	for _, addr := range addresses {
 		var migration *lxd.Response
 
