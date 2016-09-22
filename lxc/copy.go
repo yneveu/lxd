@@ -217,38 +217,39 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 	 * course, if all the errors are websocket errors, let's just
 	 * report that.
 	 */
-        if usePush {
-                return nil
-        }
-	for _, addr := range addresses {
-		var migration *lxd.Response
-
-		sourceWSUrl := "https://" + addr + sourceWSResponse.Operation
-		migration, err = dest.MigrateFrom(destName, sourceWSUrl, source.Certificate, secrets, status.Architecture, status.Config, status.Devices, status.Profiles, baseImage, ephemeral == 1, usePush)
-		if err != nil {
-			continue
-		}
-
-		if err = dest.WaitForSuccess(migration.Operation); err != nil {
-			return err
-		}
-
-		if destResource == "" {
-			op, err := migration.MetadataAsOperation()
-			if err != nil {
-				return fmt.Errorf(i18n.G("didn't get any affected image, container or snapshot from server"))
-			}
-
-			containers, ok := op.Resources["containers"]
-			if !ok || len(containers) == 0 {
-				return fmt.Errorf(i18n.G("didn't get any affected image, container or snapshot from server"))
-			}
-
-			fields := strings.Split(containers[0], "/")
-			fmt.Printf(i18n.G("Container name is: %s")+"\n", fields[len(fields)-1])
-		}
-
+	if usePush {
 		return nil
+	} else {
+		for _, addr := range addresses {
+			var migration *lxd.Response
+
+			sourceWSUrl := "https://" + addr + sourceWSResponse.Operation
+			migration, err = dest.MigrateFrom(destName, sourceWSUrl, source.Certificate, secrets, status.Architecture, status.Config, status.Devices, status.Profiles, baseImage, ephemeral == 1, usePush)
+			if err != nil {
+				continue
+			}
+
+			if err = dest.WaitForSuccess(migration.Operation); err != nil {
+				return err
+			}
+
+			if destResource == "" {
+				op, err := migration.MetadataAsOperation()
+				if err != nil {
+					return fmt.Errorf(i18n.G("didn't get any affected image, container or snapshot from server"))
+				}
+
+				containers, ok := op.Resources["containers"]
+				if !ok || len(containers) == 0 {
+					return fmt.Errorf(i18n.G("didn't get any affected image, container or snapshot from server"))
+				}
+
+				fields := strings.Split(containers[0], "/")
+				fmt.Printf(i18n.G("Container name is: %s")+"\n", fields[len(fields)-1])
+			}
+
+			return nil
+		}
 	}
 
 	return err

@@ -2022,6 +2022,9 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string, 
 		"source":       source,
 	}
 
+	if push {
+		return nil, fmt.Errorf("Support for push operations currently not implemented.")
+	}
 	return c.post("containers", body, Async)
 }
 
