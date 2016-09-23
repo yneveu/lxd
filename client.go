@@ -1978,6 +1978,12 @@ func (c *Client) GetMigrationWS(container string) (*Response, error) {
 	}
 
 	body := shared.Jmap{"migration": true}
+
+	if container == "" {
+		url := fmt.Sprintf("containers")
+		return c.post(url, body, Async)
+	}
+
 	url := fmt.Sprintf("containers/%s", container)
 	if shared.IsSnapshot(container) {
 		pieces := strings.SplitN(container, shared.SnapshotDelimiter, 2)
