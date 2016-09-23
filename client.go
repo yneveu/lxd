@@ -1980,7 +1980,7 @@ func (c *Client) GetMigrationWS(destURL, container string) (*Response, error) {
 
 	body := shared.Jmap{"migration": true}
 	if destURL != "" {
-		url = fmt.Sprintf("/%s/containers/%s", destURL, container)
+		url = fmt.Sprintf("%s/containers/%s", destURL, container)
 	} else {
 		url = fmt.Sprintf("containers/%s", container)
 	}
