@@ -18,6 +18,7 @@ func containerPost(d *Daemon, r *http.Request) Response {
 	name := mux.Vars(r)["name"]
 	c, err := containerLoadByName(d, name)
 	if err != nil {
+		shared.LogWarnf("0000")
 		return SmartError(err)
 	}
 	shared.LogWarnf("1111")
