@@ -435,6 +435,7 @@ func (c *Client) post(base string, args interface{}, rtype ResponseType) (*Respo
 
 	resp, err := c.Http.Do(req)
 	if err != nil {
+		shared.LogWarnf("QWERWERQWERQWERQER")
 		return nil, err
 	}
 
