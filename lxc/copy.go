@@ -211,6 +211,8 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 	}
 
         // PUSH MODE: We need a second set of websockets + secrets.
+        shared.LogWarnf("dest.BaseURL:   %s\n", dest.BaseURL)
+        shared.LogWarnf("dest.BaseWSURL: %s\n", dest.BaseWSURL)
 	destWSResponse, err := dest.GetMigrationWS(destName)
 	if err != nil {
                 shared.LogWarnf("AAAAAAAAAAAAAAAAAAAAAAAAAAA")
