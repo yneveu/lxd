@@ -1987,6 +1987,7 @@ func (c *Client) GetMigrationWS(container string) (*Response, error) {
 
 		url = fmt.Sprintf("containers/%s/snapshots/%s", pieces[0], pieces[1])
 	}
+	shared.LogWarnf("GetMigrationWS(): %s\n", url)
 
 	return c.post(url, body, Async)
 }
