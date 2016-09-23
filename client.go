@@ -435,7 +435,6 @@ func (c *Client) post(base string, args interface{}, rtype ResponseType) (*Respo
 
 	resp, err := c.Http.Do(req)
 	if err != nil {
-		shared.LogWarnf("QWERWERQWERQWERQER")
 		return nil, err
 	}
 
@@ -1973,7 +1972,26 @@ func (c *Client) RecursivePullFile(container string, p string, targetDir string)
 	return nil
 }
 
-func (c *Client) GetMigrationWS(container string) (*Response, error) {
+func (c *Client) GetMigrationSinkWS(container string) (*Response, error) {
+	if c.Remote.Public {
+		return nil, fmt.Errorf("This function isn't supported by public remotes.")
+	}
+
+	body := shared.Jmap{"migration": true}
+	url := fmt.Sprintf("containers/%s", container)
+	if shared.IsSnapshot(container) {
+		pieces := strings.SplitN(container, shared.SnapshotDelimiter, 2)
+		if len(pieces) != 2 {
+			return nil, fmt.Errorf("invalid snapshot name %s", container)
+		}
+
+		url = fmt.Sprintf("containers/%s/snapshots/%s", pieces[0], pieces[1])
+	}
+
+	return c.post(url, body, Async)
+}
+
+func (c *Client) GetMigrationSourceWS(container string) (*Response, error) {
 	if c.Remote.Public {
 		return nil, fmt.Errorf("This function isn't supported by public remotes.")
 	}
