@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/lxc/lxd/shared"
 )
 
 type containerPostBody struct {
@@ -17,6 +18,7 @@ func containerPost(d *Daemon, r *http.Request) Response {
 	name := mux.Vars(r)["name"]
 	c, err := containerLoadByName(d, name)
 	if err != nil {
+		shared.LogWarnf("This is a test")
 		return SmartError(err)
 	}
 
