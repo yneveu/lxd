@@ -1972,23 +1972,31 @@ func (c *Client) RecursivePullFile(container string, p string, targetDir string)
 	return nil
 }
 
-func (c *Client) GetMigrationSinkWS(container string) (*Response, error) {
+func (c *Client) GetMigrationSinkWS(name string, operation string, certificate string, secrets map[string]string, architecture string, config map[string]string, devices shared.Devices, profiles []string, baseImage string, ephemeral bool, push bool) (*Response, error) {
 	if c.Remote.Public {
 		return nil, fmt.Errorf("This function isn't supported by public remotes.")
 	}
 
-	body := shared.Jmap{"migration": true}
-	url := fmt.Sprintf("containers/%s", container)
-	if shared.IsSnapshot(container) {
-		pieces := strings.SplitN(container, shared.SnapshotDelimiter, 2)
-		if len(pieces) != 2 {
-			return nil, fmt.Errorf("invalid snapshot name %s", container)
-		}
-
-		url = fmt.Sprintf("containers/%s/snapshots/%s", pieces[0], pieces[1])
+	source := shared.Jmap{
+		"mode":        "push",
+		"type":        "migration",
+		"certificate": certificate,
+		"secrets":     secrets,
+		"base-image":  baseImage,
 	}
 
-	return c.post(url, body, Async)
+	body := shared.Jmap{
+		"migration":	true,
+		"architecture": architecture,
+		"config":       config,
+		"devices":      devices,
+		"ephemeral":    ephemeral,
+		"name":         name,
+		"profiles":     profiles,
+		"source":       source,
+	}
+
+	return c.post("containers", body, Async)
 }
 
 func (c *Client) GetMigrationSourceWS(container string) (*Response, error) {
@@ -2023,14 +2031,6 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string, 
 		"base-image":  baseImage,
 	}
 
-	if push {
-		source["mode"] = "push"
-	} else {
-		source["mode"] = "pull"
-	}
-
-	shared.LogWarnf("source[\"mode\"] == %s\n", source["mode"])
-
 	body := shared.Jmap{
 		"architecture": architecture,
 		"config":       config,
@@ -2041,9 +2041,6 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string, 
 		"source":       source,
 	}
 
-	if push {
-		return nil, fmt.Errorf("Support for push operations currently not implemented.")
-	}
 	return c.post("containers", body, Async)
 }
 

@@ -212,7 +212,7 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 	}
 
         // PUSH MODE: We need a second set of websockets + secrets.
-	destWSResponse, err := dest.GetMigrationSinkWS(destName)
+        destWSResponse, err := dest.GetMigrationSinkWS(destName, "", source.Certificate, sourceSecrets, status.Architecture, status.Config, status.Devices, status.Profiles, baseImage, ephemeral == 1, usePush)
 	if err != nil {
                 shared.LogWarnf("AAAAAAAAAAAAAAAAAAAAAAAAAAA")
 		return err
