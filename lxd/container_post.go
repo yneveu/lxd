@@ -18,26 +18,28 @@ func containerPost(d *Daemon, r *http.Request) Response {
 	name := mux.Vars(r)["name"]
 	c, err := containerLoadByName(d, name)
 	if err != nil {
-		shared.LogWarnf("AAAA")
 		return SmartError(err)
 	}
-	shared.LogWarnf("BBBB")
+	shared.LogWarnf("1111")
 
 	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return InternalError(err)
 	}
+	shared.LogWarnf("2222")
 
 	body := containerPostBody{}
 	if err := json.Unmarshal(buf, &body); err != nil {
 		return BadRequest(err)
 	}
+	shared.LogWarnf("3333")
 
 	if body.Migration {
 		ws, err := NewMigrationSource(c)
 		if err != nil {
 			return InternalError(err)
 		}
+		shared.LogWarnf("4444")
 
 		resources := map[string][]string{}
 		resources["containers"] = []string{name}
@@ -46,6 +48,7 @@ func containerPost(d *Daemon, r *http.Request) Response {
 		if err != nil {
 			return InternalError(err)
 		}
+		shared.LogWarnf("5555")
 
 		return OperationResponse(op)
 	}
