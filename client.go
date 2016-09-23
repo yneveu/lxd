@@ -1972,18 +1972,13 @@ func (c *Client) RecursivePullFile(container string, p string, targetDir string)
 	return nil
 }
 
-func (c *Client) GetMigrationWS(destURL, container string) (*Response, error) {
-	var url string
+func (c *Client) GetMigrationWS(container string) (*Response, error) {
 	if c.Remote.Public {
 		return nil, fmt.Errorf("This function isn't supported by public remotes.")
 	}
 
 	body := shared.Jmap{"migration": true}
-	if destURL != "" {
-		url = fmt.Sprintf("%s/containers/%s", destURL, container)
-	} else {
-		url = fmt.Sprintf("containers/%s", container)
-	}
+	url := fmt.Sprintf("containers/%s", container)
 	if shared.IsSnapshot(container) {
 		pieces := strings.SplitN(container, shared.SnapshotDelimiter, 2)
 		if len(pieces) != 2 {
@@ -1992,7 +1987,6 @@ func (c *Client) GetMigrationWS(destURL, container string) (*Response, error) {
 
 		url = fmt.Sprintf("containers/%s/snapshots/%s", pieces[0], pieces[1])
 	}
-	shared.LogWarnf("url: %s\n", url)
 
 	return c.post(url, body, Async)
 }
