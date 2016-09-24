@@ -42,7 +42,7 @@ func containerPost(d *Daemon, r *http.Request) Response {
 	}
 
 	if body.Migration {
-		ws, err := NewMigrationSource(c)
+		ws, err := NewMigrationSource(c, body.Live)
 		if err != nil {
 			return InternalError(err)
 		}
