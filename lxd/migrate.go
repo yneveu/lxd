@@ -166,7 +166,7 @@ func NewMigrationSource(c container, live bool) (*migrationSourceWs, error) {
 		return nil, err
 	}
 
-	if c != nil && c.IsRunning() {
+	if c != nil && c.IsRunning() || live {
 		if err := findCriu("source"); err != nil {
 			return nil, err
 		}
