@@ -214,7 +214,7 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 	}
 
         isLive := false
-        if _, ok := sourceSecrets["criu"]; !ok {
+        if _, ok := sourceSecrets["criu"]; ok {
                 isLive = true
         }
 	// PUSH MODE: We need a second set of websockets + secrets.
