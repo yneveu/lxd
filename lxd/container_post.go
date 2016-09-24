@@ -11,15 +11,27 @@ import (
 
 type containerPostBody struct {
 	Migration bool   `json:"migration"`
+	Mode      string `json:"mode"`
 	Name      string `json:"name"`
 }
 
 func containerPost(d *Daemon, r *http.Request) Response {
-	name := mux.Vars(r)["name"]
-	c, err := containerLoadByName(d, name)
-	if err != nil {
-		shared.LogWarnf("0000")
-		return SmartError(err)
+	var (
+		name string
+		mode string
+		c    container
+		err  error
+	)
+
+	mode = mux.Vars(r)["Mode"]
+	if mode == "pull" {
+		name = mux.Vars(r)["name"]
+		c, err = containerLoadByName(d, name)
+		if err != nil {
+			shared.LogWarnf("0000")
+			return SmartError(err)
+		}
+		shared.LogWarnf("0000.1111")
 	}
 	shared.LogWarnf("1111")
 
