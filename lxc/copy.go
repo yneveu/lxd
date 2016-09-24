@@ -194,7 +194,6 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 		return err
 	}
 
-	var isLive bool
 	sourceSecrets := map[string]string{}
 
 	op, err := sourceWSResponse.MetadataAsOperation()
@@ -205,8 +204,6 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 	for k, v := range *op.Metadata {
 		if val, ok := v.(string); ok {
 			sourceSecrets[k] = val
-		} else if val, ok := v.(bool); ok {
-			isLive = val
 		}
 	}
 	fmt.Printf("%v\n", sourceSecrets)
@@ -216,20 +213,17 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 		return err
 	}
 
-	sourceMetadataMap, err := sourceWSResponse.MetadataAsMap()
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("%v\n", sourceMetadataMap)
-	return nil
-
+        isLive := false
+        if _, ok := sourceSecrets["criu"]; !ok {
+                isLive = true
+        }
 	// PUSH MODE: We need a second set of websockets + secrets.
 	destWSResponse, err := dest.GetMigrationSourceWS(destName, usePush, isLive)
 	if err != nil {
 		shared.LogWarnf("AAAAAAAAAAAAAAAAAAAAAAAAAAA")
 		return err
 	}
+	return nil
 
 	destSecrets := map[string]string{}
 

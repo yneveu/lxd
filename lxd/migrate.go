@@ -172,7 +172,6 @@ func NewMigrationSource(c container, live bool) (*migrationSourceWs, error) {
 		}
 
 		ret.live = true
-		shared.LogWarnf("ret.live: %t\n", ret.live)
 		ret.criuSecret, err = shared.RandomCryptoString()
 		if err != nil {
 			return nil, err
@@ -190,10 +189,6 @@ func (s *migrationSourceWs) Metadata() interface{} {
 
 	if s.criuSecret != "" {
 		secrets["criu"] = s.criuSecret
-	}
-
-	if s.live {
-		secrets["live"] = true
 	}
 
 	return secrets
