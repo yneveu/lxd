@@ -234,6 +234,7 @@ func snapshotPost(d *Daemon, r *http.Request, sc container, containerName string
 
 	resources := map[string][]string{}
 	resources["containers"] = []string{containerName}
+	resources["live"] = []string{"true"}
 
 	op, err := operationCreate(operationClassTask, resources, nil, rename, nil, nil)
 	if err != nil {
