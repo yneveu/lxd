@@ -166,12 +166,13 @@ func NewMigrationSource(c container, live bool) (*migrationSourceWs, error) {
 		return nil, err
 	}
 
-	if c != nil && c.IsRunning() {
+	if c.IsRunning() {
 		if err := findCriu("source"); err != nil {
 			return nil, err
 		}
 
 		ret.live = true
+		shared.LogWarnf("ret.live: %t\n", ret.live)
 		ret.criuSecret, err = shared.RandomCryptoString()
 		if err != nil {
 			return nil, err
