@@ -188,12 +188,13 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 		}
 	}
 
-        // PULL MODE: We only need one set of websockets + secrets.
+	// PULL MODE: We only need one set of websockets + secrets.
 	sourceWSResponse, err := source.GetMigrationSourceWS(sourceName, false, false)
 	if err != nil {
 		return err
 	}
 
+	var isLive bool
 	sourceSecrets := map[string]string{}
 
 	op, err := sourceWSResponse.MetadataAsOperation()
@@ -202,27 +203,31 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 	}
 
 	for k, v := range *op.Metadata {
-		sourceSecrets[k] = v.(string)
+		if val, ok := v.(string); ok {
+			sourceSecrets[k] = val
+		} else if val, ok := v.(bool); ok {
+			isLive = val
+		}
 	}
-        fmt.Printf("%v\n", sourceSecrets)
+	fmt.Printf("%v\n", sourceSecrets)
 
 	sourceAddresses, err := source.Addresses()
 	if err != nil {
 		return err
 	}
 
-        sourceMetadataMap, err := sourceWSResponse.MetadataAsMap()
-        if err != nil {
-		return err
-        }
-
-        fmt.Printf("%v\n", sourceMetadataMap)
-        return nil
-
-        // PUSH MODE: We need a second set of websockets + secrets.
-        destWSResponse, err := dest.GetMigrationSourceWS(destName, usePush, false)
+	sourceMetadataMap, err := sourceWSResponse.MetadataAsMap()
 	if err != nil {
-                shared.LogWarnf("AAAAAAAAAAAAAAAAAAAAAAAAAAA")
+		return err
+	}
+
+	fmt.Printf("%v\n", sourceMetadataMap)
+	return nil
+
+	// PUSH MODE: We need a second set of websockets + secrets.
+	destWSResponse, err := dest.GetMigrationSourceWS(destName, usePush, isLive)
+	if err != nil {
+		shared.LogWarnf("AAAAAAAAAAAAAAAAAAAAAAAAAAA")
 		return err
 	}
 
@@ -236,15 +241,15 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 	for k, v := range *op.Metadata {
 		destSecrets[k] = v.(string)
 	}
-        fmt.Printf("%v\n", destSecrets)
+	fmt.Printf("%v\n", destSecrets)
 
 	destAddresses, err := dest.Addresses()
 	if err != nil {
 		return err
 	}
-        return nil
-        if destAddresses == nil {
-        }
+	return nil
+	if destAddresses == nil {
+	}
 
 	/* Since we're trying a bunch of different network ports that
 	 * may be invalid, we can get "bad handshake" errors when the
