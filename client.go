@@ -1972,39 +1972,13 @@ func (c *Client) RecursivePullFile(container string, p string, targetDir string)
 	return nil
 }
 
-func (c *Client) GetMigrationSinkWS(name string, operation string, certificate string, secrets map[string]string, architecture string, config map[string]string, devices shared.Devices, profiles []string, baseImage string, ephemeral bool, push bool) (*Response, error) {
-	if c.Remote.Public {
-		return nil, fmt.Errorf("This function isn't supported by public remotes.")
-	}
-
-	source := shared.Jmap{
-		"mode":        "push",
-		"type":        "migration",
-		"certificate": certificate,
-		"secrets":     secrets,
-		"base-image":  baseImage,
-	}
-
-	body := shared.Jmap{
-		"migration":	true,
-		"architecture": architecture,
-		"config":       config,
-		"devices":      devices,
-		"ephemeral":    ephemeral,
-		"name":         name,
-		"profiles":     profiles,
-		"source":       source,
-	}
-
-	return c.post("containers", body, Async)
-}
-
 func (c *Client) GetMigrationSourceWS(container string) (*Response, error) {
 	if c.Remote.Public {
 		return nil, fmt.Errorf("This function isn't supported by public remotes.")
 	}
 
 	body := shared.Jmap{"migration": true}
+	shared.LogWarnf("GetMigrationSourceWS(): %s\n", body)
 	url := fmt.Sprintf("containers/%s", container)
 	if shared.IsSnapshot(container) {
 		pieces := strings.SplitN(container, shared.SnapshotDelimiter, 2)
@@ -2025,6 +1999,7 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string, 
 
 	source := shared.Jmap{
 		"type":        "migration",
+		"mode":        "pull",
 		"operation":   operation,
 		"certificate": certificate,
 		"secrets":     secrets,

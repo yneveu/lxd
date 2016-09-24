@@ -23,7 +23,7 @@ func containerPost(d *Daemon, r *http.Request) Response {
 		err  error
 	)
 
-	mode = mux.Vars(r)["Mode"]
+	mode = mux.Vars(r)["mode"]
 	if mode == "pull" {
 		name = mux.Vars(r)["name"]
 		c, err = containerLoadByName(d, name)
