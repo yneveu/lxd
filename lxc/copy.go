@@ -235,6 +235,7 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 	if err != nil {
 		return err
 	}
+        return nil
         if destAddresses == nil {
         }
 
