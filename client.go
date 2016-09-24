@@ -2004,19 +2004,25 @@ func (c *Client) GetMigrationWS(container string, push bool, live bool) (*Respon
 	return c.post(url, body, Async)
 }
 
-func (c *Client) MigrateFrom(name string, operation string, certificate string, secrets map[string]string, architecture string, config map[string]string, devices shared.Devices, profiles []string, baseImage string, ephemeral bool) (*Response, error) {
+func (c *Client) MigrateFrom(name string, operation string, certificate string, secrets map[string]string, architecture string, config map[string]string, devices shared.Devices, profiles []string, baseImage string, ephemeral bool, push bool) (*Response, error) {
 	if c.Remote.Public {
 		return nil, fmt.Errorf("This function isn't supported by public remotes.")
 	}
 
 	source := shared.Jmap{
 		"type":        "migration",
-		"mode":        "pull",
 		"operation":   operation,
 		"certificate": certificate,
 		"secrets":     secrets,
 		"base-image":  baseImage,
 	}
+
+	if push {
+		source["mode"] = "push"
+	} else {
+		source["mode"] = "pull"
+	}
+
 	body := shared.Jmap{
 		"architecture": architecture,
 		"config":       config,
@@ -2027,6 +2033,9 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string, 
 		"source":       source,
 	}
 
+	if source["mode"] == "push" {
+		return nil, fmt.Errorf("Currently push mode is not fully supported.")
+	}
 	return c.post("containers", body, Async)
 }
 
