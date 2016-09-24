@@ -13,6 +13,7 @@ type containerPostBody struct {
 	Migration bool   `json:"migration"`
 	Mode      string `json:"mode"`
 	Name      string `json:"name"`
+	Live      bool   `json:"live"`
 }
 
 func containerPost(d *Daemon, r *http.Request) Response {
@@ -48,7 +49,7 @@ func containerPost(d *Daemon, r *http.Request) Response {
 	shared.LogWarnf("3333")
 
 	if body.Migration {
-		ws, err := NewMigrationSource(c)
+		ws, err := NewMigrationSource(c, body.Live)
 		if err != nil {
 			return InternalError(err)
 		}

@@ -152,7 +152,7 @@ type migrationSourceWs struct {
 	allConnected chan bool
 }
 
-func NewMigrationSource(c container) (*migrationSourceWs, error) {
+func NewMigrationSource(c container, live bool) (*migrationSourceWs, error) {
 	ret := migrationSourceWs{migrationFields{container: c}, make(chan bool, 1)}
 
 	var err error
