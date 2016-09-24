@@ -189,7 +189,7 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 	}
 
         // PULL MODE: We only need one set of websockets + secrets.
-	sourceWSResponse, err := source.GetMigrationSourceWS(sourceName)
+	sourceWSResponse, err := source.GetMigrationSourceWS(sourceName, usePush)
 	if err != nil {
 		return err
 	}
@@ -212,7 +212,7 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 	}
 
         // PUSH MODE: We need a second set of websockets + secrets.
-        destWSResponse, err := dest.GetMigrationSourceWS(destName)
+        destWSResponse, err := dest.GetMigrationSourceWS(destName, usePush)
         // destWSResponse, err := dest.GetMigrationSinkWS(destName, "", source.Certificate, sourceSecrets, status.Architecture, status.Config, status.Devices, status.Profiles, baseImage, ephemeral == 1, usePush)
 	if err != nil {
                 shared.LogWarnf("AAAAAAAAAAAAAAAAAAAAAAAAAAA")
@@ -229,6 +229,7 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 	for k, v := range *op.Metadata {
 		destSecrets[k] = v.(string)
 	}
+        fmt.Printf("%v\n", destSecrets)
 
 	destAddresses, err := dest.Addresses()
 	if err != nil {
