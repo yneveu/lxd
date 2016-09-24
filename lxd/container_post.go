@@ -10,15 +10,19 @@ import (
 
 type containerPostBody struct {
 	Migration bool   `json:"migration"`
+	Mode      string `json:"mode"`
 	Name      string `json:"name"`
+	Live      bool   `json:"live"`
 }
 
 func containerPost(d *Daemon, r *http.Request) Response {
-	name := mux.Vars(r)["name"]
-	c, err := containerLoadByName(d, name)
-	if err != nil {
-		return SmartError(err)
-	}
+	var (
+		name string
+		c    container
+		err  error
+	)
+
+	name = mux.Vars(r)["name"]
 
 	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -28,6 +32,13 @@ func containerPost(d *Daemon, r *http.Request) Response {
 	body := containerPostBody{}
 	if err := json.Unmarshal(buf, &body); err != nil {
 		return BadRequest(err)
+	}
+
+	if body.Mode == "pull" {
+		c, err = containerLoadByName(d, name)
+		if err != nil {
+			return SmartError(err)
+		}
 	}
 
 	if body.Migration {
