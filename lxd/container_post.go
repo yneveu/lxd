@@ -25,6 +25,7 @@ func containerPost(d *Daemon, r *http.Request) Response {
 	)
 
 	mode = mux.Vars(r)["mode"]
+	shared.LogWarnf("mode: %s\n", mode)
 	if mode == "pull" {
 		name = mux.Vars(r)["name"]
 		c, err = containerLoadByName(d, name)
