@@ -189,7 +189,7 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 	}
 
         // PULL MODE: We only need one set of websockets + secrets.
-	sourceWSResponse, err := source.GetMigrationSourceWS(sourceName, usePush)
+	sourceWSResponse, err := source.GetMigrationSourceWS(sourceName, false)
 	if err != nil {
 		return err
 	}
