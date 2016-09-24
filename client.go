@@ -1972,7 +1972,7 @@ func (c *Client) RecursivePullFile(container string, p string, targetDir string)
 	return nil
 }
 
-func (c *Client) GetMigrationSourceWS(container string) (*Response, error) {
+func (c *Client) GetMigrationWS(container string) (*Response, error) {
 	if c.Remote.Public {
 		return nil, fmt.Errorf("This function isn't supported by public remotes.")
 	}
