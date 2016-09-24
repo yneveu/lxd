@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/lxc/lxd/shared"
 )
 
@@ -17,6 +18,7 @@ type containerPostBody struct {
 
 func containerPost(d *Daemon, r *http.Request) Response {
 	var (
+		name string
 		c    container
 		err  error
 	)
@@ -34,7 +36,8 @@ func containerPost(d *Daemon, r *http.Request) Response {
 	shared.LogWarnf("3333")
 
 	if body.Mode == "pull" {
-		c, err = containerLoadByName(d, body.Name)
+		name = mux.Vars(r)["name"]
+		c, err = containerLoadByName(d, name)
 		if err != nil {
 			shared.LogWarnf("0000")
 			return SmartError(err)
@@ -51,7 +54,7 @@ func containerPost(d *Daemon, r *http.Request) Response {
 		shared.LogWarnf("4444")
 
 		resources := map[string][]string{}
-		resources["containers"] = []string{body.Name}
+		resources["containers"] = []string{name}
 
 		op, err := operationCreate(operationClassWebsocket, resources, ws.Metadata(), ws.Do, nil, ws.Connect)
 		if err != nil {
@@ -73,7 +76,7 @@ func containerPost(d *Daemon, r *http.Request) Response {
 	}
 
 	resources := map[string][]string{}
-	resources["containers"] = []string{body.Name}
+	resources["containers"] = []string{name}
 
 	op, err := operationCreate(operationClassTask, resources, nil, run, nil, nil)
 	if err != nil {
