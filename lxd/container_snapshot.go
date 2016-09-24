@@ -206,7 +206,6 @@ func snapshotPost(d *Daemon, r *http.Request, sc container, containerName string
 
 		resources := map[string][]string{}
 		resources["containers"] = []string{containerName}
-		resources["live"] = []string{"true"}
 
 		op, err := operationCreate(operationClassWebsocket, resources, ws.Metadata(), ws.Do, nil, ws.Connect)
 		if err != nil {

@@ -192,6 +192,10 @@ func (s *migrationSourceWs) Metadata() interface{} {
 		secrets["criu"] = s.criuSecret
 	}
 
+	if s.live {
+		secrets["live"] = true
+	}
+
 	return secrets
 }
 
