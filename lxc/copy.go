@@ -171,7 +171,7 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 		}
 	}
 
-	sourceWSResponse, err := source.GetMigrationWS(sourceName)
+	sourceWSResponse, err := source.GetMigrationWS(sourceName, false, false)
 	if err != nil {
 		return err
 	}
