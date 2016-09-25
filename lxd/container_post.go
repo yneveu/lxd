@@ -12,17 +12,12 @@ type containerPostBody struct {
 	Migration bool   `json:"migration"`
 	Mode      string `json:"mode"`
 	Name      string `json:"name"`
-	Live      bool   `json:"live"`
+	Live      bool   `json:"stateful"`
 }
 
 func containerPost(d *Daemon, r *http.Request) Response {
-	var (
-		name string
-		c    container
-		err  error
-	)
-
-	name = mux.Vars(r)["name"]
+	var c container
+	name := mux.Vars(r)["name"]
 
 	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {

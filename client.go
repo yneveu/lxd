@@ -1986,9 +1986,9 @@ func (c *Client) GetMigrationWS(container string, push bool, live bool) (*Respon
 	}
 
 	if live {
-		body["live"] = true
+		body["stateful"] = true
 	} else {
-		body["live"] = false
+		body["stateful"] = false
 	}
 
 	url := fmt.Sprintf("containers/%s", container)
