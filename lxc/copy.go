@@ -240,12 +240,16 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 	 */
 	for _, addr := range sourceAddresses {
 		var migration *lxd.Response
+                var destOperation string
+                if destWSResponse != nil {
+                        destOperation = destWSResponse.Operation
+                }
 
-		sourceWSUrl := "https://" + addr + sourceWSResponse.Operation
-		migration, err = dest.MigrateFrom(destName, sourceWSUrl, source.Certificate, sourceSecrets, status.Architecture, status.Config, status.Devices, status.Profiles, baseImage, ephemeral == 1, usePush)
+		migration, err = dest.MigrateFrom(destName, source, addr, sourceWSResponse.Operation, destOperation, source.Certificate, sourceSecrets, destSecrets, status.Architecture, status.Config, status.Devices, status.Profiles, baseImage, ephemeral == 1, usePush)
 		if err != nil {
 			continue
 		}
+                return nil
 
 		if err = dest.WaitForSuccess(migration.Operation); err != nil {
 			return err

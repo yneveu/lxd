@@ -2003,16 +2003,17 @@ func (c *Client) GetMigrationWS(container string, push bool, live bool) (*Respon
 	return c.post(url, body, Async)
 }
 
-func (c *Client) MigrateFrom(name string, operation string, certificate string, secrets map[string]string, architecture string, config map[string]string, devices shared.Devices, profiles []string, baseImage string, ephemeral bool, push bool) (*Response, error) {
+func (c *Client) MigrateFrom(name string, client *Client, addr string, sourceOperation string, destOperation string, certificate string, sourceSecrets map[string]string, destSecrets map[string]string, architecture string, config map[string]string, devices shared.Devices, profiles []string, baseImage string, ephemeral bool, push bool) (*Response, error) {
 	if c.Remote.Public {
 		return nil, fmt.Errorf("This function isn't supported by public remotes.")
 	}
 
+	sourceWSUrl := "https://" + addr + sourceOperation
 	source := shared.Jmap{
 		"type":        "migration",
-		"operation":   operation,
+		"operation":   sourceWSUrl,
 		"certificate": certificate,
-		"secrets":     secrets,
+		"secrets":     sourceSecrets,
 		"base-image":  baseImage,
 	}
 
@@ -2033,7 +2034,102 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string, 
 	}
 
 	if source["mode"] == "push" {
-		return nil, fmt.Errorf("Currently push mode is not fully supported.")
+		// Check source server secrets.
+		sourceControlSecret, ok := sourceSecrets["control"]
+		if !ok {
+			return nil, fmt.Errorf("Missing control secret")
+		}
+		sourceFsSecret, ok := sourceSecrets["fs"]
+		if !ok {
+			return nil, fmt.Errorf("Missing fs secret")
+		}
+
+		criuSecret := false
+		sourceCriuSecret, ok := sourceSecrets["criu"]
+		if ok {
+			criuSecret = true
+		}
+
+		// Connect to source server websockets.
+		sourceControlConn, err := client.Websocket(sourceOperation, sourceControlSecret)
+		if err != nil {
+			return nil, err
+		}
+		defer sourceControlConn.Close()
+		sourceFsConn, err := client.Websocket(sourceOperation, sourceFsSecret)
+		if err != nil {
+			return nil, err
+		}
+		defer sourceFsConn.Close()
+
+		var sourceCriuConn *websocket.Conn
+		if criuSecret {
+			sourceCriuConn, err = client.Websocket(sourceOperation, sourceCriuSecret)
+			if err != nil {
+				return nil, err
+			}
+			defer sourceCriuConn.Close()
+		}
+
+		// Sockets are connected here.
+		// Now we need to actually start sending data.
+
+		// Check target server secrets.
+		destControlSecret, ok := destSecrets["control"]
+		if !ok {
+			return nil, fmt.Errorf("Missing control secret")
+		}
+		destFsSecret, ok := destSecrets["fs"]
+		if !ok {
+			return nil, fmt.Errorf("Missing fs secret")
+		}
+		destCriuSecret, ok := destSecrets["criu"]
+		if criuSecret && !ok || !criuSecret && ok {
+			return nil, fmt.Errorf("Missing criu secret")
+		}
+
+		// Connect to target server websockets.
+		destControlConn, err := c.Websocket(destOperation, destControlSecret)
+		if err != nil {
+			return nil, err
+		}
+		defer destControlConn.Close()
+		destFsConn, err := c.Websocket(destOperation, destFsSecret)
+		if err != nil {
+			return nil, err
+		}
+		defer destFsConn.Close()
+
+		var destCriuConn *websocket.Conn
+		if criuSecret {
+			destCriuConn, err = c.Websocket(destOperation, destCriuSecret)
+			if err != nil {
+				return nil, err
+			}
+			defer destCriuConn.Close()
+		}
+
+		// Silence warnings for now.
+		if sourceControlConn == nil {
+			return nil, err
+		}
+		if sourceFsConn == nil {
+			return nil, err
+		}
+		if criuSecret && sourceCriuConn == nil {
+			return nil, err
+		}
+
+		if destControlConn == nil {
+			return nil, err
+		}
+		if destFsConn == nil {
+			return nil, err
+		}
+		if criuSecret && destCriuConn == nil {
+			return nil, err
+		}
+		return nil, nil
 	}
 	return c.post("containers", body, Async)
 }

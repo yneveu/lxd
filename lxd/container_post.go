@@ -41,11 +41,15 @@ func containerPost(d *Daemon, r *http.Request) Response {
 		if err != nil {
 			return InternalError(err)
 		}
-
 		resources := map[string][]string{}
 		resources["containers"] = []string{name}
 
-		op, err := operationCreate(operationClassWebsocket, resources, ws.Metadata(), ws.Do, nil, ws.Connect)
+		var op *operation
+		if body.Mode == "push" {
+			op, err = operationCreate(operationClassWebsocket, resources, ws.Metadata(), nil, nil, ws.Connect)
+		} else {
+			op, err = operationCreate(operationClassWebsocket, resources, ws.Metadata(), ws.Do, nil, ws.Connect)
+		}
 		if err != nil {
 			return InternalError(err)
 		}
