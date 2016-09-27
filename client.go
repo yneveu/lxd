@@ -2073,7 +2073,49 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 		if err != nil {
 			return nil, err
 		}
-		if resp == nil {
+		destSecrets := map[string]string{}
+		op, err := resp.MetadataAsOperation()
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range *op.Metadata {
+			destSecrets[k] = v.(string)
+		}
+
+		destControlSecret, ok := destSecrets["control"]
+		if !ok {
+			return nil, fmt.Errorf("Missing control secret")
+		}
+		destFsSecret, ok := destSecrets["fs"]
+		if !ok {
+			return nil, fmt.Errorf("Missing fs secret")
+		}
+		destCriuSecret, ok := destSecrets["criu"]
+		if criuSecret && !ok || !criuSecret && ok {
+			return nil, fmt.Errorf("Missing criu secret")
+		}
+
+		// Connect to dest server websockets.
+		destControlConn, err := c.Websocket(resp.Operation, destControlSecret)
+		if err != nil {
+			return nil, err
+		}
+		defer destControlConn.Close()
+		destFsConn, err := c.Websocket(resp.Operation, destFsSecret)
+		if err != nil {
+			return nil, err
+		}
+		defer destFsConn.Close()
+
+		var destCriuConn *websocket.Conn
+		if criuSecret {
+			destCriuConn, err = c.Websocket(resp.Operation, destCriuSecret)
+			if err != nil {
+				return nil, err
+			}
+			defer destCriuConn.Close()
+		}
+		if op == nil {
 		}
 		return nil, nil
 	}
