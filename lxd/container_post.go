@@ -28,11 +28,9 @@ func containerPost(d *Daemon, r *http.Request) Response {
 		return BadRequest(err)
 	}
 
-	if body.Mode == "pull" {
-		c, err = containerLoadByName(d, name)
-		if err != nil {
-			return SmartError(err)
-		}
+	c, err = containerLoadByName(d, name)
+	if err != nil {
+		return SmartError(err)
 	}
 
 	if body.Migration {
