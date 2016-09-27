@@ -22,6 +22,7 @@ import (
 	"strings"
 	"syscall"
 
+	log "gopkg.in/inconshreveable/log15.v2"
 	"github.com/gorilla/websocket"
 
 	"github.com/lxc/lxd/shared"
@@ -2034,12 +2035,16 @@ func (c *Client) MigrateFrom(name string, client *Client, addr string, sourceOpe
 	}
 
 	if source["mode"] == "push" {
+		/* Create the container on the target server either from an
+		 * already existing image or from scratch. We will then rsync
+		 * over it. */
 		resp, err := c.post("containers", body, Async)
 		if err != nil {
 			return nil, err
 		}
 		if resp == nil {
 		}
+
 		// Check source server secrets.
 		sourceControlSecret, ok := sourceSecrets["control"]
 		if !ok {
@@ -2077,8 +2082,23 @@ func (c *Client) MigrateFrom(name string, client *Client, addr string, sourceOpe
 			defer sourceCriuConn.Close()
 		}
 
-		// Sockets are connected here.
-		// Now we need to actually start sending data.
+		// Sockets are now connected.
+		// Now we need to actually send and copy the data.
+		mt, r, err := sourceControlConn.NextReader()
+		if err != nil {
+			return nil, err
+		}
+
+		if mt != websocket.BinaryMessage {
+			return nil, fmt.Errorf("Only binary messages allowed")
+		}
+
+		buf, err := ioutil.ReadAll(r)
+		if err != nil {
+			return nil, err
+		}
+		shared.LogDebug("AAA", log.Ctx{"AAA": buf})
+		return nil, nil
 
 		// Check target server secrets.
 		destControlSecret, ok := destSecrets["control"]
