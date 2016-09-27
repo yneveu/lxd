@@ -201,8 +201,13 @@ func createFromNone(d *Daemon, req *containerPostReq) Response {
 }
 
 func createFromMigration(d *Daemon, req *containerPostReq) Response {
-	if req.Source.Mode != "pull" {
+	if req.Source.Mode != "pull" && req.Source.Mode != "push" {
 		return NotImplemented
+	}
+
+	usePush := false
+	if req.Source.Mode == "push" {
+		usePush = true
 	}
 
 	architecture, err := shared.ArchitectureId(req.Architecture)
@@ -250,57 +255,59 @@ func createFromMigration(d *Daemon, req *containerPostReq) Response {
 			}
 		}
 
-		var cert *x509.Certificate
-		if req.Source.Certificate != "" {
-			certBlock, _ := pem.Decode([]byte(req.Source.Certificate))
-			if certBlock == nil {
-				return fmt.Errorf("Invalid certificate")
+		if !usePush {
+			var cert *x509.Certificate
+			if req.Source.Certificate != "" {
+				certBlock, _ := pem.Decode([]byte(req.Source.Certificate))
+				if certBlock == nil {
+					return fmt.Errorf("Invalid certificate")
+				}
+
+				cert, err = x509.ParseCertificate(certBlock.Bytes)
+				if err != nil {
+					return err
+				}
 			}
 
-			cert, err = x509.ParseCertificate(certBlock.Bytes)
+			config, err := shared.GetTLSConfig("", "", "", cert)
+			if err != nil {
+				c.Delete()
+				return err
+			}
+
+			migrationArgs := MigrationSinkArgs{
+				Url: req.Source.Operation,
+				Dialer: websocket.Dialer{
+					TLSClientConfig: config,
+					NetDial:         shared.RFC3493Dialer},
+				Container: c,
+				Secrets:   req.Source.Websockets,
+			}
+
+			sink, err := NewMigrationSink(&migrationArgs)
+			if err != nil {
+				c.Delete()
+				return err
+			}
+
+			// Start the storage for this container (LVM mount/umount)
+			c.StorageStart()
+
+			// And finaly run the migration.
+			err = sink()
+			if err != nil {
+				c.StorageStop()
+				shared.LogError("Error during migration sink", log.Ctx{"err": err})
+				c.Delete()
+				return fmt.Errorf("Error transferring container data: %s", err)
+			}
+
+			defer c.StorageStop()
+
+			err = c.TemplateApply("copy")
 			if err != nil {
 				return err
 			}
-		}
-
-		config, err := shared.GetTLSConfig("", "", "", cert)
-		if err != nil {
-			c.Delete()
-			return err
-		}
-
-		migrationArgs := MigrationSinkArgs{
-			Url: req.Source.Operation,
-			Dialer: websocket.Dialer{
-				TLSClientConfig: config,
-				NetDial:         shared.RFC3493Dialer},
-			Container: c,
-			Secrets:   req.Source.Websockets,
-		}
-
-		sink, err := NewMigrationSink(&migrationArgs)
-		if err != nil {
-			c.Delete()
-			return err
-		}
-
-		// Start the storage for this container (LVM mount/umount)
-		c.StorageStart()
-
-		// And finaly run the migration.
-		err = sink()
-		if err != nil {
-			c.StorageStop()
-			shared.LogError("Error during migration sink", log.Ctx{"err": err})
-			c.Delete()
-			return fmt.Errorf("Error transferring container data: %s", err)
-		}
-
-		defer c.StorageStop()
-
-		err = c.TemplateApply("copy")
-		if err != nil {
-			return err
 		}
 
 		return nil
