@@ -514,6 +514,7 @@ func (s *migrationSourceWs) Do(migrateOp *operation) error {
 type migrationSink struct {
 	migrationFields
 
+	sink   migrationFields
 	url    string
 	dialer websocket.Dialer
 }
@@ -527,9 +528,9 @@ type MigrationSinkArgs struct {
 
 func NewMigrationSink(args *MigrationSinkArgs) (func() error, error) {
 	sink := migrationSink{
-		migrationFields{container: args.Container},
-		args.Url,
-		args.Dialer,
+		migrationFields: migrationFields{container: args.Container},
+		url:             args.Url,
+		dialer:          args.Dialer,
 	}
 
 	var ok bool
