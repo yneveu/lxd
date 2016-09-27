@@ -2008,12 +2008,18 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 
 	source := shared.Jmap{
 		"type":        "migration",
-		"mode":        "pull",
 		"operation":   operation,
 		"certificate": certificate,
 		"secrets":     secrets,
 		"base-image":  baseImage,
 	}
+
+	if push {
+		source["mode"] = "push"
+	} else {
+		source["mode"] = "pull"
+	}
+
 	body := shared.Jmap{
 		"architecture": architecture,
 		"config":       config,
