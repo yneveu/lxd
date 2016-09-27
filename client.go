@@ -2097,7 +2097,7 @@ func (c *Client) MigrateFrom(name string, client *Client, addr string, sourceOpe
 		if err != nil {
 			return nil, err
 		}
-		shared.LogDebug("AAA", log.Ctx{"AAA": buf})
+		shared.LogWarn("AAA", log.Ctx{"AAA": buf})
 		return nil, nil
 
 		// Check target server secrets.
