@@ -631,8 +631,13 @@ func (s *migrationSink) Connect(op *operation, r *http.Request, w http.ResponseW
 	return nil
 }
 
-func (c *migrationSink) Do() error {
+func (c *migrationSink) Do(migrateOp *operation) error {
 	var err error
+
+	// Start the storage for this container (LVM mount/umount)
+	c.container.StorageStart()
+	defer c.container.StorageStop()
+
 	c.controlConn, err = c.connectWithSecret(c.controlSecret)
 	if err != nil {
 		return err
@@ -793,6 +798,13 @@ func (c *migrationSink) Do() error {
 			}
 		}
 	}
+
+	err = c.container.TemplateApply("copy")
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 /*
