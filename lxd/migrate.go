@@ -526,7 +526,7 @@ type MigrationSinkArgs struct {
 	Secrets   map[string]string
 }
 
-func NewMigrationSink(args *MigrationSinkArgs) (func() error, error) {
+func NewMigrationSink(args *MigrationSinkArgs, push bool) (*migrationSink, error) {
 	sink := migrationSink{
 		migrationFields: migrationFields{container: args.Container},
 		url:             args.Url,
@@ -534,24 +534,43 @@ func NewMigrationSink(args *MigrationSinkArgs) (func() error, error) {
 	}
 
 	var ok bool
+	var err error
 	sink.controlSecret, ok = args.Secrets["control"]
 	if !ok {
 		return nil, fmt.Errorf("Missing control secret")
+	}
+	if push {
+		sink.sink.controlSecret, err = shared.RandomCryptoString()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	sink.fsSecret, ok = args.Secrets["fs"]
 	if !ok {
 		return nil, fmt.Errorf("Missing fs secret")
 	}
+	if push {
+		sink.sink.fsSecret, err = shared.RandomCryptoString()
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	sink.criuSecret, ok = args.Secrets["criu"]
 	sink.live = ok
+	if push && ok {
+		sink.sink.criuSecret, err = shared.RandomCryptoString()
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	if err := findCriu("destination"); sink.live && err != nil {
 		return nil, err
 	}
 
-	return sink.do, nil
+	return &sink, nil
 }
 
 func (c *migrationSink) connectWithSecret(secret string) (*websocket.Conn, error) {
@@ -563,7 +582,7 @@ func (c *migrationSink) connectWithSecret(secret string) (*websocket.Conn, error
 	return lxd.WebsocketDial(c.dialer, wsUrl)
 }
 
-func (c *migrationSink) do() error {
+func (c *migrationSink) Do() error {
 	var err error
 	c.controlConn, err = c.connectWithSecret(c.controlSecret)
 	if err != nil {

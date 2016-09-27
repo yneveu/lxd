@@ -201,14 +201,10 @@ func createFromNone(d *Daemon, req *containerPostReq) Response {
 }
 
 func createFromMigration(d *Daemon, req *containerPostReq) Response {
-	if req.Source.Mode != "pull" {
-		return NotImplemented
+	push := false
+	if req.Source.Mode == "push" {
+		push = true
 	}
-
-	// push := false
-	// if req.Source.Mode == "push" {
-	// 	push = true
-	// }
 
 	architecture, err := shared.ArchitectureId(req.Architecture)
 	if err != nil {
@@ -283,7 +279,7 @@ func createFromMigration(d *Daemon, req *containerPostReq) Response {
 			Secrets:   req.Source.Websockets,
 		}
 
-		sink, err := NewMigrationSink(&migrationArgs)
+		sink, err := NewMigrationSink(&migrationArgs, push)
 		if err != nil {
 			c.Delete()
 			return err
@@ -293,7 +289,7 @@ func createFromMigration(d *Daemon, req *containerPostReq) Response {
 		c.StorageStart()
 
 		// And finaly run the migration.
-		err = sink()
+		err = sink.Do()
 		if err != nil {
 			c.StorageStop()
 			shared.LogError("Error during migration sink", log.Ctx{"err": err})
