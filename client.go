@@ -1991,7 +1991,10 @@ func (c *Client) GetMigrationSourceWS(container string) (*Response, error) {
 	return c.post(url, body, Async)
 }
 
-func (c *Client) MigrateFrom(name string, operation string, certificate string, secrets map[string]string, architecture string, config map[string]string, devices shared.Devices, profiles []string, baseImage string, ephemeral bool) (*Response, error) {
+func (c *Client) MigrateFrom(name string, operation string, certificate string,
+	secrets map[string]string, architecture string, config map[string]string,
+	devices shared.Devices, profiles []string,
+	baseImage string, ephemeral bool, push bool) (*Response, error) {
 	if c.Remote.Public {
 		return nil, fmt.Errorf("This function isn't supported by public remotes.")
 	}
