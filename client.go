@@ -2073,6 +2073,8 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 		if err != nil {
 			return nil, err
 		}
+		if resp == nil {
+		}
 		return nil, nil
 	}
 

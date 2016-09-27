@@ -205,6 +205,11 @@ func createFromMigration(d *Daemon, req *containerPostReq) Response {
 		return NotImplemented
 	}
 
+	// push := false
+	// if req.Source.Mode == "push" {
+	// 	push = true
+	// }
+
 	architecture, err := shared.ArchitectureId(req.Architecture)
 	if err != nil {
 		architecture = 0
