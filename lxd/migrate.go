@@ -518,9 +518,11 @@ type migrationSink struct {
 	url          string
 	dialer       websocket.Dialer
 	allConnected chan bool
+	push         bool
 }
 
 type MigrationSinkArgs struct {
+	Push      bool
 	Url       string
 	Dialer    websocket.Dialer
 	Container container
@@ -532,6 +534,7 @@ func NewMigrationSink(args *MigrationSinkArgs, push bool) (*migrationSink, error
 		migrationFields: migrationFields{container: args.Container},
 		url:             args.Url,
 		dialer:          args.Dialer,
+		push:            args.Push,
 	}
 
 	var ok bool
@@ -637,26 +640,28 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 	// Start the storage for this container (LVM mount/umount)
 	c.container.StorageStart()
 
-	c.controlConn, err = c.connectWithSecret(c.controlSecret)
-	if err != nil {
-		c.container.StorageStop()
-		return err
-	}
-	defer c.disconnect()
+	if !c.push {
+		c.controlConn, err = c.connectWithSecret(c.controlSecret)
+		if err != nil {
+			c.container.StorageStop()
+			return err
+		}
+		defer c.disconnect()
 
-	c.fsConn, err = c.connectWithSecret(c.fsSecret)
-	if err != nil {
-		c.container.StorageStop()
-		c.sendControl(err)
-		return err
-	}
-
-	if c.live {
-		c.criuConn, err = c.connectWithSecret(c.criuSecret)
+		c.fsConn, err = c.connectWithSecret(c.fsSecret)
 		if err != nil {
 			c.container.StorageStop()
 			c.sendControl(err)
 			return err
+		}
+
+		if c.live {
+			c.criuConn, err = c.connectWithSecret(c.criuSecret)
+			if err != nil {
+				c.container.StorageStop()
+				c.sendControl(err)
+				return err
+			}
 		}
 	}
 

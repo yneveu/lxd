@@ -276,6 +276,7 @@ func createFromMigration(d *Daemon, req *containerPostReq) Response {
 			NetDial:         shared.RFC3493Dialer},
 		Container: c,
 		Secrets:   req.Source.Websockets,
+		Push:      push,
 	}
 
 	sink, err := NewMigrationSink(&migrationArgs, push)
