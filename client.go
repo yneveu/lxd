@@ -2086,7 +2086,7 @@ func (c *Client) MigrateFrom(name string, client *Client, addr string, sourceOpe
 		// Now we need to actually send and copy the data.
 		mt, r, err := sourceControlConn.NextReader()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("QWEREWR")
 		}
 
 		if mt != websocket.BinaryMessage {
