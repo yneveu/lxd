@@ -514,9 +514,10 @@ func (s *migrationSourceWs) Do(migrateOp *operation) error {
 type migrationSink struct {
 	migrationFields
 
-	sink   migrationFields
-	url    string
-	dialer websocket.Dialer
+	sink         migrationFields
+	url          string
+	dialer       websocket.Dialer
+	allConnected chan bool
 }
 
 type MigrationSinkArgs struct {
@@ -580,6 +581,54 @@ func (c *migrationSink) connectWithSecret(secret string) (*websocket.Conn, error
 	wsUrl := fmt.Sprintf("wss://%s/websocket?%s", strings.TrimPrefix(c.url, "https://"), query.Encode())
 
 	return lxd.WebsocketDial(c.dialer, wsUrl)
+}
+
+func (s *migrationSink) Metadata() interface{} {
+	secrets := shared.Jmap{
+		"control": s.sink.controlSecret,
+		"fs":      s.sink.fsSecret,
+	}
+
+	if s.criuSecret != "" {
+		secrets["criu"] = s.sink.criuSecret
+	}
+
+	return secrets
+}
+
+func (s *migrationSink) Connect(op *operation, r *http.Request, w http.ResponseWriter) error {
+	secret := r.FormValue("secret")
+	if secret == "" {
+		return fmt.Errorf("missing secret")
+	}
+
+	var conn **websocket.Conn
+
+	switch secret {
+	case s.sink.controlSecret:
+		conn = &s.sink.controlConn
+	case s.sink.criuSecret:
+		conn = &s.sink.criuConn
+	case s.sink.fsSecret:
+		conn = &s.sink.fsConn
+	default:
+		/* If we didn't find the right secret, the user provided a bad one,
+		 * which 403, not 404, since this operation actually exists */
+		return os.ErrPermission
+	}
+
+	c, err := shared.WebsocketUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return err
+	}
+
+	*conn = c
+
+	if s.sink.controlConn != nil && (!s.live || s.sink.criuConn != nil) && s.sink.fsConn != nil {
+		s.allConnected <- true
+	}
+
+	return nil
 }
 
 func (c *migrationSink) Do() error {
