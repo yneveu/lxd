@@ -1999,9 +1999,10 @@ func (c *Client) GetMigrationSourceWS(container string, push bool) (*Response, e
 }
 
 func (c *Client) MigrateFrom(name string, operation string, certificate string,
-	secrets map[string]string, architecture string, config map[string]string,
+	sourceSecrets map[string]string, architecture string, config map[string]string,
 	devices shared.Devices, profiles []string,
-	baseImage string, ephemeral bool, push bool) (*Response, error) {
+	baseImage string, ephemeral bool, push bool, sourceClient *Client,
+	sourceOperation string) (*Response, error) {
 	if c.Remote.Public {
 		return nil, fmt.Errorf("This function isn't supported by public remotes.")
 	}
@@ -2010,7 +2011,7 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 		"type":        "migration",
 		"operation":   operation,
 		"certificate": certificate,
-		"secrets":     secrets,
+		"secrets":     sourceSecrets,
 		"base-image":  baseImage,
 	}
 
@@ -2028,6 +2029,46 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 		"name":         name,
 		"profiles":     profiles,
 		"source":       source,
+	}
+
+	if source["mode"] == "push" {
+		// Check source server secrets.
+		sourceControlSecret, ok := sourceSecrets["control"]
+		if !ok {
+			return nil, fmt.Errorf("Missing control secret")
+		}
+		sourceFsSecret, ok := sourceSecrets["fs"]
+		if !ok {
+			return nil, fmt.Errorf("Missing fs secret")
+		}
+
+		criuSecret := false
+		sourceCriuSecret, ok := sourceSecrets["criu"]
+		if ok {
+			criuSecret = true
+		}
+
+		// Connect to source server websockets.
+		sourceControlConn, err := sourceClient.Websocket(sourceOperation, sourceControlSecret)
+		if err != nil {
+			return nil, err
+		}
+		defer sourceControlConn.Close()
+		sourceFsConn, err := sourceClient.Websocket(sourceOperation, sourceFsSecret)
+		if err != nil {
+			return nil, err
+		}
+		defer sourceFsConn.Close()
+
+		var sourceCriuConn *websocket.Conn
+		if criuSecret {
+			sourceCriuConn, err = sourceClient.Websocket(sourceOperation, sourceCriuSecret)
+			if err != nil {
+				return nil, err
+			}
+			defer sourceCriuConn.Close()
+		}
+		return nil, nil
 	}
 
 	return c.post("containers", body, Async)
