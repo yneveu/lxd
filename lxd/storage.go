@@ -552,7 +552,7 @@ func (lw *storageLogWrapper) PreservesInodes() bool {
 }
 
 func (lw *storageLogWrapper) MigrationSource(container container) (MigrationStorageSourceDriver, error) {
-	lw.log.Debug("MigrationSource asdfsadfasf", log.Ctx{"container": container.Name()})
+	lw.log.Debug("MigrationSource", log.Ctx{"container": container.Name()})
 	return lw.w.MigrationSource(container)
 }
 
