@@ -2068,6 +2068,11 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 			}
 			defer sourceCriuConn.Close()
 		}
+
+		resp, err := c.post("containers", body, Async)
+		if err != nil {
+			return nil, err
+		}
 		return nil, nil
 	}
 
