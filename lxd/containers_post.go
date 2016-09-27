@@ -290,7 +290,7 @@ func createFromMigration(d *Daemon, req *containerPostReq) Response {
 
 	var op *operation
 	if push {
-		op, err = operationCreate(operationClassWebsocket, resources, sink.Metadata(), nil, nil, sink.Connect)
+		op, err = operationCreate(operationClassWebsocket, resources, sink.Metadata(), sink.Do, nil, sink.Connect)
 		if err != nil {
 			return InternalError(err)
 		}
