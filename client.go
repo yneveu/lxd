@@ -2119,7 +2119,30 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 			}
 			defer destCriuConn.Close()
 		}
-		if op == nil {
+
+		mt, r, err := sourceControlConn.NextReader()
+		if err != nil {
+			return nil, err
+		}
+
+		if mt != websocket.BinaryMessage {
+			return nil, fmt.Errorf("Only binary messages allowed")
+		}
+
+		buf, err := ioutil.ReadAll(r)
+		if err != nil {
+			return nil, err
+		}
+
+		w, err := sourceControlConn.NextWriter(websocket.BinaryMessage)
+		if err != nil {
+			return nil, err
+		}
+		defer w.Close()
+
+		err = shared.WriteAll(w, buf)
+		if err != nil {
+			return nil, err
 		}
 		return nil, nil
 	}
