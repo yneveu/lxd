@@ -2091,12 +2091,10 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 		if err != nil {
 			return nil, err
 		}
-		defer sourceControlConn.Close()
 		sourceFsConn, err := sourceClient.Websocket(sourceOperation, sourceFsSecret)
 		if err != nil {
 			return nil, err
 		}
-		defer sourceFsConn.Close()
 
 		var sourceCriuConn *websocket.Conn
 		if criuSecret {
@@ -2104,7 +2102,6 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 			if err != nil {
 				return nil, err
 			}
-			defer sourceCriuConn.Close()
 		}
 
 		// Post to target server and request and retrieve a set of
@@ -2142,12 +2139,10 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 		if err != nil {
 			return nil, err
 		}
-		defer destControlConn.Close()
 		destFsConn, err := c.Websocket(resp.Operation, destFsSecret)
 		if err != nil {
 			return nil, err
 		}
-		defer destFsConn.Close()
 
 		var destCriuConn *websocket.Conn
 		if criuSecret {
@@ -2155,20 +2150,64 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 			if err != nil {
 				return nil, err
 			}
-			defer destCriuConn.Close()
 		}
 
-		buf, err := c.Recv(sourceControlConn)
-		if err != nil {
-			return nil, err
-		}
-		shared.LogWarnf("0000")
+		go func() {
+			for {
+				buf, err := c.Recv(sourceControlConn)
+				if err != nil {
+					return
+				}
+				err = c.Send(destControlConn, buf)
+				if err != nil {
+					return
+				}
+			}
+		}()
 
-		err = c.Send(sourceControlConn, buf)
-		if err != nil {
-			return nil, err
+		go func() {
+			for {
+				buf, err := c.Recv(sourceFsConn)
+				if err != nil {
+					return
+				}
+				err = c.Send(destFsConn, buf)
+				if err != nil {
+					return
+				}
+			}
+		}()
+
+		if criuSecret {
+			go func() {
+				for {
+					buf, err := c.Recv(sourceCriuConn)
+					if err != nil {
+						return
+					}
+					err = c.Send(destCriuConn, buf)
+					if err != nil {
+						return
+					}
+				}
+			}()
 		}
-		shared.LogWarnf("1111")
+
+		// err = c.Send(sourceControlConn, buf)
+		// if err != nil {
+		// 	return nil, err
+		// }
+		// buf, err := c.Recv(sourceControlConn)
+		// if err != nil {
+		// 	return nil, err
+		// }
+		// shared.LogWarnf("0000")
+
+		// err = c.Send(sourceControlConn, buf)
+		// if err != nil {
+		// 	return nil, err
+		// }
+		// shared.LogWarnf("1111")
 		return nil, nil
 	}
 
