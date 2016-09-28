@@ -628,7 +628,7 @@ func (s *migrationSink) Connect(op *operation, r *http.Request, w http.ResponseW
 	*conn = c
 
 	if s.sink.controlConn != nil && (!s.live || s.sink.criuConn != nil) && s.sink.fsConn != nil {
-		s.allConnected <- true
+		s.sink.allConnected <- true
 	}
 
 	return nil
@@ -637,9 +637,9 @@ func (s *migrationSink) Connect(op *operation, r *http.Request, w http.ResponseW
 func (c *migrationSink) Do(migrateOp *operation) error {
 	var err error
 
-	// if c.push {
-	// 	<-c.allConnected
-	// }
+	if c.push {
+		<-c.allConnected
+	}
 
 	// Start the storage for this container (LVM mount/umount)
 	c.container.StorageStart()
@@ -669,14 +669,12 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 		}
 	}
 
-	shared.LogWarnf("0000: This is a test")
 	header := MigrationHeader{}
 	if err := c.recv(&header); err != nil {
 		c.container.StorageStop()
 		c.sendControl(err)
 		return err
 	}
-	shared.LogWarnf("1111: This is a test")
 
 	criuType := CRIUType_CRIU_RSYNC.Enum()
 	if !c.live {
