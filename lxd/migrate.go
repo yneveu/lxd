@@ -637,6 +637,8 @@ func (s *migrationSink) Connect(op *operation, r *http.Request, w http.ResponseW
 func (c *migrationSink) Do(migrateOp *operation) error {
 	var err error
 
+	<-s.allConnected
+
 	// Start the storage for this container (LVM mount/umount)
 	c.container.StorageStart()
 
