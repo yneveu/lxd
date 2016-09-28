@@ -675,6 +675,7 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 		c.sendControl(err)
 		return err
 	}
+	shared.LogWarnf("TEST: %v", header)
 
 	criuType := CRIUType_CRIU_RSYNC.Enum()
 	if !c.live {
