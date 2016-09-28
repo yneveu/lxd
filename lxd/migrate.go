@@ -673,7 +673,7 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 	header := MigrationHeader{}
 	if err := c.sink.recv(&header); err != nil {
 		c.container.StorageStop()
-		c.sendControl(err)
+		c.sink.sendControl(err)
 		return err
 	}
 	return nil
