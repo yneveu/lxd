@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/gorilla/websocket"
@@ -1998,6 +1999,48 @@ func (c *Client) GetMigrationSourceWS(container string, push bool) (*Response, e
 	return c.post(url, body, Async)
 }
 
+func (c *Client) Send(conn *websocket.Conn, data []byte) error {
+	/* gorilla websocket doesn't allow concurrent writes, and
+	 * panic()s if it sees them (which is reasonable). If e.g. we
+	 * happen to fail, get scheduled, start our write, then get
+	 * unscheduled before the write is bit to a new thread which is
+	 * receiving an error from the other side (due to our previous
+	 * close), we can engage in these concurrent writes, which
+	 * casuses the whole daemon to panic.
+	 *
+	 * Instead, let's lock sends to the controlConn so that we only ever
+	 * write one message at the time.
+	 */
+	var controlLock sync.Mutex
+	controlLock.Lock()
+	defer controlLock.Unlock()
+	w, err := conn.NextWriter(websocket.BinaryMessage)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+
+	return shared.WriteAll(w, data)
+}
+
+// func (c *migrationFields) recv(m proto.Message) error {
+// 	mt, r, err := c.controlConn.NextReader()
+// 	if err != nil {
+// 		return err
+// 	}
+//
+// 	if mt != websocket.BinaryMessage {
+// 		return fmt.Errorf("Only binary messages allowed")
+// 	}
+//
+// 	buf, err := ioutil.ReadAll(r)
+// 	if err != nil {
+// 		return err
+// 	}
+//
+// 	return proto.Unmarshal(buf, m)
+// }
+
 func (c *Client) MigrateFrom(name string, operation string, certificate string,
 	sourceSecrets map[string]string, architecture string, config map[string]string,
 	devices shared.Devices, profiles []string,
@@ -2137,18 +2180,11 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 		}
 		shared.LogWarnf("2222")
 
-		w, err := sourceControlConn.NextWriter(websocket.BinaryMessage)
+		err = c.Send(sourceControlConn, buf)
 		if err != nil {
 			return nil, err
 		}
-		defer w.Close()
 		shared.LogWarnf("3333")
-
-		err = shared.WriteAll(w, buf)
-		if err != nil {
-			return nil, err
-		}
-		shared.LogWarnf("4444")
 		return nil, nil
 	}
 
