@@ -670,12 +670,14 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 		}
 	}
 
+	shared.LogWarnf("0000")
 	header := MigrationHeader{}
 	if err := c.sink.recv(&header); err != nil {
 		c.container.StorageStop()
 		c.sink.sendControl(err)
 		return err
 	}
+	shared.LogWarnf("1111")
 	return nil
 
 	criuType := CRIUType_CRIU_RSYNC.Enum()
