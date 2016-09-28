@@ -637,7 +637,7 @@ func (s *migrationSink) Connect(op *operation, r *http.Request, w http.ResponseW
 func (c *migrationSink) Do(migrateOp *operation) error {
 	var err error
 
-	if push {
+	if c.push {
 		<-c.allConnected
 	}
 
