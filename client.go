@@ -2023,23 +2023,18 @@ func (c *Client) Send(conn *websocket.Conn, data []byte) error {
 	return shared.WriteAll(w, data)
 }
 
-// func (c *migrationFields) recv(m proto.Message) error {
-// 	mt, r, err := c.controlConn.NextReader()
-// 	if err != nil {
-// 		return err
-// 	}
-//
-// 	if mt != websocket.BinaryMessage {
-// 		return fmt.Errorf("Only binary messages allowed")
-// 	}
-//
-// 	buf, err := ioutil.ReadAll(r)
-// 	if err != nil {
-// 		return err
-// 	}
-//
-// 	return proto.Unmarshal(buf, m)
-// }
+func (c *Client) Recv(conn *websocket.Conn) ([]byte, error) {
+	mt, r, err := conn.NextReader()
+	if err != nil {
+		return nil, err
+	}
+
+	if mt != websocket.BinaryMessage {
+		return nil, fmt.Errorf("Only binary messages allowed")
+	}
+
+	return ioutil.ReadAll(r)
+}
 
 func (c *Client) MigrateFrom(name string, operation string, certificate string,
 	sourceSecrets map[string]string, architecture string, config map[string]string,
@@ -2163,28 +2158,17 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 			defer destCriuConn.Close()
 		}
 
-		mt, r, err := sourceControlConn.NextReader()
+		buf, err := c.Recv(sourceControlConn)
 		if err != nil {
 			return nil, err
 		}
 		shared.LogWarnf("0000")
 
-		if mt != websocket.BinaryMessage {
-			return nil, fmt.Errorf("Only binary messages allowed")
-		}
-		shared.LogWarnf("1111")
-
-		buf, err := ioutil.ReadAll(r)
-		if err != nil {
-			return nil, err
-		}
-		shared.LogWarnf("2222")
-
 		err = c.Send(sourceControlConn, buf)
 		if err != nil {
 			return nil, err
 		}
-		shared.LogWarnf("3333")
+		shared.LogWarnf("1111")
 		return nil, nil
 	}
 
