@@ -670,12 +670,13 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 	}
 
 	header := MigrationHeader{}
+	shared.LogWarnf("0000: %v", header)
 	if err := c.recv(&header); err != nil {
 		c.container.StorageStop()
 		c.sendControl(err)
 		return err
 	}
-	shared.LogWarnf("TEST: %v", header)
+	shared.LogWarnf("1111: %v", header)
 
 	criuType := CRIUType_CRIU_RSYNC.Enum()
 	if !c.live {
