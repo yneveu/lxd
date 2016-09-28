@@ -637,18 +637,14 @@ func (s *migrationSink) Connect(op *operation, r *http.Request, w http.ResponseW
 func (c *migrationSink) Do(migrateOp *operation) error {
 	var err error
 
-	if c.push {
-		shared.LogWarnf("0000.1111: This is a test")
-		<-c.allConnected
-		shared.LogWarnf("0000.2222: This is a test")
-	}
+	// if c.push {
+	// 	<-c.allConnected
+	// }
 
 	// Start the storage for this container (LVM mount/umount)
 	c.container.StorageStart()
 
-	shared.LogWarnf("0000: This is a test")
 	if !c.push {
-		shared.LogWarnf("1111: This is a test")
 		c.controlConn, err = c.connectWithSecret(c.controlSecret)
 		if err != nil {
 			c.container.StorageStop()
@@ -673,12 +669,14 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 		}
 	}
 
+	shared.LogWarnf("0000: This is a test")
 	header := MigrationHeader{}
 	if err := c.recv(&header); err != nil {
 		c.container.StorageStop()
 		c.sendControl(err)
 		return err
 	}
+	shared.LogWarnf("1111: This is a test")
 
 	criuType := CRIUType_CRIU_RSYNC.Enum()
 	if !c.live {
