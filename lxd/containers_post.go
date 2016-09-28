@@ -294,6 +294,7 @@ func createFromMigration(d *Daemon, req *containerPostReq) Response {
 		if err != nil {
 			return InternalError(err)
 		}
+		shared.LogWarnf("0000.1111")
 	} else {
 		op, err = operationCreate(operationClassTask, resources, nil, sink.Do, nil, nil)
 		if err != nil {
