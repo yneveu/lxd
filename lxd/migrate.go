@@ -671,9 +671,9 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 	}
 
 	header := MigrationHeader{}
-	if err := c.recv(&header); err != nil {
+	if err := c.sink.recv(&header); err != nil {
 		c.container.StorageStop()
-		c.sendControl(err)
+		c.sink.sendControl(err)
 		return err
 	}
 
@@ -697,9 +697,9 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 		resp.Fs = &myType
 	}
 
-	if err := c.send(&resp); err != nil {
+	if err := c.sink.send(&resp); err != nil {
 		c.container.StorageStop()
-		c.sendControl(err)
+		c.sink.sendControl(err)
 		return err
 	}
 
@@ -742,7 +742,7 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 				snapshots = header.Snapshots
 			}
 
-			if err := mySink(c.live, c.container, header.Snapshots, c.fsConn, srcIdmap); err != nil {
+			if err := mySink(c.live, c.container, header.Snapshots, c.sink.fsConn, srcIdmap); err != nil {
 				fsTransfer <- err
 				return
 			}
@@ -765,7 +765,7 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 
 			defer os.RemoveAll(imagesDir)
 
-			if err := RsyncRecv(shared.AddSlash(imagesDir), c.criuConn); err != nil {
+			if err := RsyncRecv(shared.AddSlash(imagesDir), c.sink.criuConn); err != nil {
 				restore <- err
 				return
 			}
@@ -789,23 +789,23 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 		restore <- nil
 	}(c)
 
-	source := c.controlChannel()
+	source := c.sink.controlChannel()
 
 	for {
 		select {
 		case err = <-restore:
 			c.container.StorageStop()
-			c.sendControl(err)
+			c.sink.sendControl(err)
 			return err
 		case msg, ok := <-source:
 			if !ok {
 				c.container.StorageStop()
-				c.disconnect()
+				// c.disconnect()
 				return fmt.Errorf("Got error reading source")
 			}
 			if !*msg.Success {
 				c.container.StorageStop()
-				c.disconnect()
+				// c.disconnect()
 				return fmt.Errorf(*msg.Message)
 			} else {
 				// The source can only tell us it failed (e.g. if

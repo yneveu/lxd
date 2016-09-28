@@ -2156,10 +2156,12 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 			for {
 				buf, err := c.Recv(sourceControlConn)
 				if err != nil {
+					shared.LogWarnf("sourceControlConn recv()")
 					return
 				}
 				err = c.Send(destControlConn, buf)
 				if err != nil {
+					shared.LogWarnf("destControlConn send()")
 					return
 				}
 			}
@@ -2169,10 +2171,12 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 			for {
 				buf, err := c.Recv(sourceFsConn)
 				if err != nil {
+					shared.LogWarnf("sourceFsConn recv()")
 					return
 				}
 				err = c.Send(destFsConn, buf)
 				if err != nil {
+					shared.LogWarnf("destFsConn send()")
 					return
 				}
 			}
@@ -2183,10 +2187,12 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 				for {
 					buf, err := c.Recv(sourceCriuConn)
 					if err != nil {
+						shared.LogWarnf("sourceCriuConn recv()")
 						return
 					}
 					err = c.Send(destCriuConn, buf)
 					if err != nil {
+						shared.LogWarnf("sourceCriuConn send()")
 						return
 					}
 				}
