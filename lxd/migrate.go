@@ -518,9 +518,11 @@ type migrationSink struct {
 	url          string
 	dialer       websocket.Dialer
 	allConnected chan bool
+	push         bool
 }
 
 type MigrationSinkArgs struct {
+	Push      bool
 	Url       string
 	Dialer    websocket.Dialer
 	Container container
@@ -532,6 +534,11 @@ func NewMigrationSink(args *MigrationSinkArgs, push bool) (*migrationSink, error
 		migrationFields: migrationFields{container: args.Container},
 		url:             args.Url,
 		dialer:          args.Dialer,
+		push:            args.Push,
+	}
+
+	if push {
+		sink.allConnected = make(chan bool, 1)
 	}
 
 	var ok bool
@@ -631,31 +638,60 @@ func (s *migrationSink) Connect(op *operation, r *http.Request, w http.ResponseW
 	return nil
 }
 
-func (c *migrationSink) Do() error {
+func (c *migrationSink) Do(migrateOp *operation) error {
 	var err error
-	c.controlConn, err = c.connectWithSecret(c.controlSecret)
-	if err != nil {
-		return err
-	}
-	defer c.disconnect()
 
-	c.fsConn, err = c.connectWithSecret(c.fsSecret)
-	if err != nil {
-		c.sendControl(err)
-		return err
+	if c.push {
+		<-c.allConnected
 	}
 
-	if c.live {
-		c.criuConn, err = c.connectWithSecret(c.criuSecret)
+	// Start the storage for this container (LVM mount/umount)
+	c.container.StorageStart()
+
+	if !c.push {
+		c.controlConn, err = c.connectWithSecret(c.controlSecret)
 		if err != nil {
+			c.container.StorageStop()
+			return err
+		}
+		defer c.disconnect()
+
+		c.fsConn, err = c.connectWithSecret(c.fsSecret)
+		if err != nil {
+			c.container.StorageStop()
 			c.sendControl(err)
 			return err
 		}
+
+		if c.live {
+			c.criuConn, err = c.connectWithSecret(c.criuSecret)
+			if err != nil {
+				c.container.StorageStop()
+				c.sendControl(err)
+				return err
+			}
+		}
+	}
+
+	receiver := c.recv
+	if c.push {
+		receiver = c.sink.recv
+	}
+
+	sender := c.send
+	if c.push {
+		sender = c.sink.send
+	}
+
+	controller := c.sendControl
+	if c.push {
+		controller = c.sink.sendControl
 	}
 
 	header := MigrationHeader{}
-	if err := c.recv(&header); err != nil {
-		c.sendControl(err)
+	if err := receiver(&header); err != nil {
+		c.container.StorageStop()
+		controller(err)
 		return err
 	}
 
@@ -679,8 +715,9 @@ func (c *migrationSink) Do() error {
 		resp.Fs = &myType
 	}
 
-	if err := c.send(&resp); err != nil {
-		c.sendControl(err)
+	if err := sender(&resp); err != nil {
+		c.container.StorageStop()
+		controller(err)
 		return err
 	}
 
@@ -723,7 +760,11 @@ func (c *migrationSink) Do() error {
 				snapshots = header.Snapshots
 			}
 
-			if err := mySink(c.live, c.container, header.Snapshots, c.fsConn, srcIdmap); err != nil {
+			fsConn := c.fsConn
+			if c.push {
+				fsConn = c.sink.fsConn
+			}
+			if err := mySink(c.live, c.container, header.Snapshots, fsConn, srcIdmap); err != nil {
 				fsTransfer <- err
 				return
 			}
@@ -746,7 +787,11 @@ func (c *migrationSink) Do() error {
 
 			defer os.RemoveAll(imagesDir)
 
-			if err := RsyncRecv(shared.AddSlash(imagesDir), c.criuConn); err != nil {
+			criuConn := c.criuConn
+			if c.push {
+				criuConn = c.sink.criuConn
+			}
+			if err := RsyncRecv(shared.AddSlash(imagesDir), criuConn); err != nil {
 				restore <- err
 				return
 			}
@@ -771,19 +816,29 @@ func (c *migrationSink) Do() error {
 	}(c)
 
 	source := c.controlChannel()
+	if c.push {
+		source = c.sink.controlChannel()
+	}
 
 	for {
 		select {
 		case err = <-restore:
-			c.sendControl(err)
+			c.container.StorageStop()
+			controller(err)
 			return err
 		case msg, ok := <-source:
 			if !ok {
-				c.disconnect()
+				c.container.StorageStop()
+				if !c.push {
+					c.disconnect()
+				}
 				return fmt.Errorf("Got error reading source")
 			}
 			if !*msg.Success {
-				c.disconnect()
+				c.container.StorageStop()
+				if !c.push {
+					c.disconnect()
+				}
 				return fmt.Errorf(*msg.Message)
 			} else {
 				// The source can only tell us it failed (e.g. if
@@ -793,6 +848,15 @@ func (c *migrationSink) Do() error {
 			}
 		}
 	}
+
+	defer c.container.StorageStop()
+
+	err = c.container.TemplateApply("copy")
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 /*
