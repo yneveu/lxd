@@ -535,6 +535,7 @@ func NewMigrationSink(args *MigrationSinkArgs, push bool) (*migrationSink, error
 		url:             args.Url,
 		dialer:          args.Dialer,
 		push:            args.Push,
+		allConnected:    make(chan bool, 1),
 	}
 
 	var ok bool
@@ -628,7 +629,7 @@ func (s *migrationSink) Connect(op *operation, r *http.Request, w http.ResponseW
 	*conn = c
 
 	if s.sink.controlConn != nil && (!s.live || s.sink.criuConn != nil) && s.sink.fsConn != nil {
-		s.sink.allConnected <- true
+		s.allConnected <- true
 	}
 
 	return nil
