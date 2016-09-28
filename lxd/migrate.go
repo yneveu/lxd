@@ -340,12 +340,10 @@ func (s *migrationSourceWs) Do(migrateOp *operation) error {
 		Snapshots:     snapshots,
 	}
 
-	shared.LogWarnf("migrationsource do 0000: %v", header)
 	if err := s.send(&header); err != nil {
 		s.sendControl(err)
 		return err
 	}
-	shared.LogWarnf("migrationsource do 1111: %v", header)
 
 	if fsErr != nil {
 		s.sendControl(fsErr)
@@ -638,6 +636,7 @@ func (s *migrationSink) Connect(op *operation, r *http.Request, w http.ResponseW
 
 func (c *migrationSink) Do(migrateOp *operation) error {
 	var err error
+	shared.LogWarnf("1111: This is a test")
 
 	if c.push {
 		<-c.allConnected
@@ -677,7 +676,6 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 		c.sendControl(err)
 		return err
 	}
-	shared.LogWarnf("1111: %v", header)
 
 	criuType := CRIUType_CRIU_RSYNC.Enum()
 	if !c.live {
