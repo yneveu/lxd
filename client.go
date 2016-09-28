@@ -2122,33 +2122,33 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 
 		mt, r, err := sourceControlConn.NextReader()
 		if err != nil {
-			shared.LogWarnf("0000")
 			return nil, err
 		}
+		shared.LogWarnf("0000")
 
 		if mt != websocket.BinaryMessage {
-			shared.LogWarnf("1111")
 			return nil, fmt.Errorf("Only binary messages allowed")
 		}
+		shared.LogWarnf("1111")
 
 		buf, err := ioutil.ReadAll(r)
 		if err != nil {
-			shared.LogWarnf("2222")
 			return nil, err
 		}
+		shared.LogWarnf("2222")
 
 		w, err := sourceControlConn.NextWriter(websocket.BinaryMessage)
 		if err != nil {
-			shared.LogWarnf("3333")
 			return nil, err
 		}
 		defer w.Close()
+		shared.LogWarnf("3333")
 
 		err = shared.WriteAll(w, buf)
 		if err != nil {
-			shared.LogWarnf("4444")
 			return nil, err
 		}
+		shared.LogWarnf("4444")
 		return nil, nil
 	}
 
