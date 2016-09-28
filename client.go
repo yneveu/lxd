@@ -2069,6 +2069,10 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 			defer sourceCriuConn.Close()
 		}
 
+		// Post to target server and request and retrieve a set of
+		// websockets + secrets matching those of the source server. The
+		// set of websockets + secrets is send as a background operation
+		// to us.
 		resp, err := c.post("containers", body, Async)
 		if err != nil {
 			return nil, err
@@ -2117,7 +2121,6 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 		}
 		if op == nil {
 		}
-		shared.LogWarnf("UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU")
 		return nil, nil
 	}
 
