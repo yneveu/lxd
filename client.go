@@ -2117,7 +2117,7 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 		}
 		if op == nil {
 		}
-		shared.LogDebugf("UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU")
+		shared.LogWarnf("UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU")
 		return nil, nil
 	}
 
