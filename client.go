@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/gorilla/websocket"
@@ -1998,6 +1999,43 @@ func (c *Client) GetMigrationSourceWS(container string, push bool) (*Response, e
 	return c.post(url, body, Async)
 }
 
+func (c *Client) Send(conn *websocket.Conn, data []byte) error {
+	/* gorilla websocket doesn't allow concurrent writes, and
+	 * panic()s if it sees them (which is reasonable). If e.g. we
+	 * happen to fail, get scheduled, start our write, then get
+	 * unscheduled before the write is bit to a new thread which is
+	 * receiving an error from the other side (due to our previous
+	 * close), we can engage in these concurrent writes, which
+	 * casuses the whole daemon to panic.
+	 *
+	 * Instead, let's lock sends to the controlConn so that we only ever
+	 * write one message at the time.
+	 */
+	var controlLock sync.Mutex
+	controlLock.Lock()
+	defer controlLock.Unlock()
+	w, err := conn.NextWriter(websocket.BinaryMessage)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+
+	return shared.WriteAll(w, data)
+}
+
+func (c *Client) Recv(conn *websocket.Conn) ([]byte, error) {
+	mt, r, err := conn.NextReader()
+	if err != nil {
+		return nil, err
+	}
+
+	if mt != websocket.BinaryMessage {
+		return nil, fmt.Errorf("Only binary messages allowed")
+	}
+
+	return ioutil.ReadAll(r)
+}
+
 func (c *Client) MigrateFrom(name string, operation string, certificate string,
 	sourceSecrets map[string]string, architecture string, config map[string]string,
 	devices shared.Devices, profiles []string,
@@ -2029,6 +2067,166 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 		"name":         name,
 		"profiles":     profiles,
 		"source":       source,
+	}
+
+	if source["mode"] == "push" {
+		// Check source server secrets.
+		sourceControlSecret, ok := sourceSecrets["control"]
+		if !ok {
+			return nil, fmt.Errorf("Missing control secret")
+		}
+		sourceFsSecret, ok := sourceSecrets["fs"]
+		if !ok {
+			return nil, fmt.Errorf("Missing fs secret")
+		}
+
+		criuSecret := false
+		sourceCriuSecret, ok := sourceSecrets["criu"]
+		if ok {
+			criuSecret = true
+		}
+
+		// Connect to source server websockets.
+		sourceControlConn, err := sourceClient.Websocket(sourceOperation, sourceControlSecret)
+		if err != nil {
+			return nil, err
+		}
+		sourceFsConn, err := sourceClient.Websocket(sourceOperation, sourceFsSecret)
+		if err != nil {
+			return nil, err
+		}
+
+		var sourceCriuConn *websocket.Conn
+		if criuSecret {
+			sourceCriuConn, err = sourceClient.Websocket(sourceOperation, sourceCriuSecret)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		// Post to target server and request and retrieve a set of
+		// websockets + secrets matching those of the source server. The
+		// set of websockets + secrets is send as a background operation
+		// to us.
+		resp, err := c.post("containers", body, Async)
+		if err != nil {
+			return nil, err
+		}
+		destSecrets := map[string]string{}
+		op, err := resp.MetadataAsOperation()
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range *op.Metadata {
+			destSecrets[k] = v.(string)
+		}
+
+		destControlSecret, ok := destSecrets["control"]
+		if !ok {
+			return nil, fmt.Errorf("Missing control secret")
+		}
+		destFsSecret, ok := destSecrets["fs"]
+		if !ok {
+			return nil, fmt.Errorf("Missing fs secret")
+		}
+		destCriuSecret, ok := destSecrets["criu"]
+		if criuSecret && !ok || !criuSecret && ok {
+			return nil, fmt.Errorf("Missing criu secret")
+		}
+
+		// Connect to dest server websockets.
+		destControlConn, err := c.Websocket(resp.Operation, destControlSecret)
+		if err != nil {
+			return nil, err
+		}
+		destFsConn, err := c.Websocket(resp.Operation, destFsSecret)
+		if err != nil {
+			return nil, err
+		}
+
+		var destCriuConn *websocket.Conn
+		if criuSecret {
+			destCriuConn, err = c.Websocket(resp.Operation, destCriuSecret)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		errControl := make(chan error, 2)
+
+		go func() {
+			for {
+				buf, err := c.Recv(sourceControlConn)
+				if err != nil {
+					shared.LogWarnf("sourceControlConn recv()")
+					errControl <- err
+					return
+				}
+				err = c.Send(destControlConn, buf)
+				if err != nil {
+					shared.LogWarnf("destControlConn send()")
+					errControl <- err
+					return
+				}
+			}
+		}()
+
+		go func() {
+			for {
+				buf, err := c.Recv(sourceFsConn)
+				if err != nil {
+					shared.LogWarnf("sourceFsConn recv()")
+					errControl <- err
+					return
+				}
+				err = c.Send(destFsConn, buf)
+				if err != nil {
+					shared.LogWarnf("destFsConn send()")
+					errControl <- err
+					return
+				}
+			}
+		}()
+
+		if criuSecret {
+			go func() {
+				for {
+					buf, err := c.Recv(sourceCriuConn)
+					if err != nil {
+						shared.LogWarnf("sourceCriuConn recv()")
+						errControl <- err
+						return
+					}
+					err = c.Send(destCriuConn, buf)
+					if err != nil {
+						shared.LogWarnf("sourceCriuConn send()")
+						errControl <- err
+						return
+					}
+				}
+			}()
+		}
+
+		for i := 0; i < cap(errControl); i++ {
+			shared.LogWarnf("Error: %s\n", <-errControl)
+		}
+
+		// err = c.Send(sourceControlConn, buf)
+		// if err != nil {
+		// 	return nil, err
+		// }
+		// buf, err := c.Recv(sourceControlConn)
+		// if err != nil {
+		// 	return nil, err
+		// }
+		// shared.LogWarnf("0000")
+
+		// err = c.Send(sourceControlConn, buf)
+		// if err != nil {
+		// 	return nil, err
+		// }
+		// shared.LogWarnf("1111")
+		return nil, nil
 	}
 
 	return c.post("containers", body, Async)
