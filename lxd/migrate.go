@@ -636,7 +636,6 @@ func (s *migrationSink) Connect(op *operation, r *http.Request, w http.ResponseW
 
 func (c *migrationSink) Do(migrateOp *operation) error {
 	var err error
-	shared.LogWarnf("1111: This is a test")
 
 	if c.push {
 		<-c.allConnected
@@ -645,7 +644,9 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 	// Start the storage for this container (LVM mount/umount)
 	c.container.StorageStart()
 
+	shared.LogWarnf("0000: This is a test")
 	if !c.push {
+		shared.LogWarnf("1111: This is a test")
 		c.controlConn, err = c.connectWithSecret(c.controlSecret)
 		if err != nil {
 			c.container.StorageStop()
