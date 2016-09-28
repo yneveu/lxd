@@ -638,7 +638,9 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 	var err error
 
 	if c.push {
+		shared.LogWarnf("0000.1111: This is a test")
 		<-c.allConnected
+		shared.LogWarnf("0000.2222: This is a test")
 	}
 
 	// Start the storage for this container (LVM mount/umount)
