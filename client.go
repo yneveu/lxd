@@ -2156,11 +2156,14 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 			for {
 				mt, payload, err := src.ReadMessage()
 				if err != nil {
+					shared.LogWarnf("%s\n", err)
 					if err != io.EOF {
+						shared.LogWarnf("%s\n", err)
 						break
 					}
 				}
 				if err = dest.WriteMessage(mt, payload); err != nil {
+					shared.LogWarnf("%s\n", err)
 					break
 				}
 			}
