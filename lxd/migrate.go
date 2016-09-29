@@ -525,7 +525,7 @@ type MigrationSinkArgs struct {
 	Secrets   map[string]string
 }
 
-func NewMigrationSink(args *MigrationSinkArgs) (func() error, error) {
+func NewMigrationSink(args *MigrationSinkArgs) (*migrationSink, error) {
 	sink := migrationSink{
 		migrationFields{container: args.Container},
 		args.Url,
@@ -550,7 +550,7 @@ func NewMigrationSink(args *MigrationSinkArgs) (func() error, error) {
 		return nil, err
 	}
 
-	return sink.do, nil
+	return &sink, nil
 }
 
 func (c *migrationSink) connectWithSecret(secret string) (*websocket.Conn, error) {
@@ -562,16 +562,22 @@ func (c *migrationSink) connectWithSecret(secret string) (*websocket.Conn, error
 	return lxd.WebsocketDial(c.dialer, wsUrl)
 }
 
-func (c *migrationSink) do() error {
+func (c *migrationSink) Do(migrateOp *operation) error {
 	var err error
+
+	// Start the storage for this container (LVM mount/umount)
+	c.container.StorageStart()
+
 	c.controlConn, err = c.connectWithSecret(c.controlSecret)
 	if err != nil {
+		c.container.StorageStop()
 		return err
 	}
 	defer c.disconnect()
 
 	c.fsConn, err = c.connectWithSecret(c.fsSecret)
 	if err != nil {
+		c.container.StorageStop()
 		c.sendControl(err)
 		return err
 	}
@@ -579,6 +585,7 @@ func (c *migrationSink) do() error {
 	if c.live {
 		c.criuConn, err = c.connectWithSecret(c.criuSecret)
 		if err != nil {
+			c.container.StorageStop()
 			c.sendControl(err)
 			return err
 		}
@@ -586,6 +593,7 @@ func (c *migrationSink) do() error {
 
 	header := MigrationHeader{}
 	if err := c.recv(&header); err != nil {
+		c.container.StorageStop()
 		c.sendControl(err)
 		return err
 	}
@@ -611,6 +619,7 @@ func (c *migrationSink) do() error {
 	}
 
 	if err := c.send(&resp); err != nil {
+		c.container.StorageStop()
 		c.sendControl(err)
 		return err
 	}
@@ -706,14 +715,17 @@ func (c *migrationSink) do() error {
 	for {
 		select {
 		case err = <-restore:
+			c.container.StorageStop()
 			c.sendControl(err)
 			return err
 		case msg, ok := <-source:
 			if !ok {
+				c.container.StorageStop()
 				c.disconnect()
 				return fmt.Errorf("Got error reading source")
 			}
 			if !*msg.Success {
+				c.container.StorageStop()
 				c.disconnect()
 				return fmt.Errorf(*msg.Message)
 			} else {
@@ -724,6 +736,15 @@ func (c *migrationSink) do() error {
 			}
 		}
 	}
+
+	defer c.container.StorageStop()
+
+	err = c.container.TemplateApply("copy")
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 /*
