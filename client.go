@@ -2154,6 +2154,7 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 
 		proxy := func(src *websocket.Conn, dest *websocket.Conn) {
 			for {
+				shared.LogWarnf("start")
 				mt, payload, err := src.ReadMessage()
 				if err != nil {
 					shared.LogWarnf("%s\n", err)
@@ -2162,10 +2163,12 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 						break
 					}
 				}
+				shared.LogWarnf("middle")
 				if err = dest.WriteMessage(mt, payload); err != nil {
 					shared.LogWarnf("%s\n", err)
 					break
 				}
+				shared.LogWarnf("start")
 			}
 		}
 
