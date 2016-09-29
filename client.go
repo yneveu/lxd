@@ -2112,6 +2112,7 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 		if err != nil {
 			return nil, err
 		}
+
 		destSecrets := map[string]string{}
 		op, err := resp.MetadataAsOperation()
 		if err != nil {
@@ -2194,7 +2195,7 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 			<-syncChan
 		}
 
-		return nil, nil
+		return resp, nil
 	}
 
 	return c.post("containers", body, Async)
