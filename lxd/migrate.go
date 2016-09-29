@@ -648,6 +648,15 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 	// Start the storage for this container (LVM mount/umount)
 	c.container.StorageStart()
 
+	disconnector := c.disconnect
+	if c.push {
+		disconnector = c.sink.disconnect
+	}
+
+	if c.push {
+		defer disconnector()
+	}
+
 	if !c.push {
 		c.controlConn, err = c.connectWithSecret(c.controlSecret)
 		if err != nil {
@@ -829,16 +838,12 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 		case msg, ok := <-source:
 			if !ok {
 				c.container.StorageStop()
-				if !c.push {
-					c.disconnect()
-				}
+				disconnector()
 				return fmt.Errorf("Got error reading source")
 			}
 			if !*msg.Success {
 				c.container.StorageStop()
-				if !c.push {
-					c.disconnect()
-				}
+				disconnector()
 				return fmt.Errorf(*msg.Message)
 			} else {
 				// The source can only tell us it failed (e.g. if
