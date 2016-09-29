@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"syscall"
 
 	"github.com/gorilla/websocket"
@@ -2180,6 +2181,8 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 			go proxy(sourceCriuConn, destCriuConn)
 			go proxy(destCriuConn, sourceCriuConn)
 		}
+
+		time.Sleep(10 * time.Second)
 
 		// err = c.Send(sourceControlConn, buf)
 		// if err != nil {
