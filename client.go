@@ -22,7 +22,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/gorilla/websocket"
 
@@ -2153,51 +2152,47 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 			}
 		}
 
-		proxy := func(src *websocket.Conn, dest *websocket.Conn, name string) {
+		capacity := 4
+		if criuSecret {
+			capacity += 2
+		}
+		syncChan := make(chan error, capacity)
+
+		proxy := func(src *websocket.Conn, dest *websocket.Conn) {
 			for {
 				mt, payload, err := src.ReadMessage()
 				if err != nil {
 					if err != io.EOF {
-						shared.LogWarnf("src.ReadMessage(): err != io.EOF: %s: %s\n", err, name)
+						syncChan <- err
 						break
 					}
-					shared.LogWarnf("src.ReadMessage(): err != nil: %s: %s\n", err, name)
 				}
+				/* The gorilla websockets framework doesn't
+				*  allow concurrent writes. */
 				var controlLock sync.Mutex
 				controlLock.Lock()
 				if err = dest.WriteMessage(mt, payload); err != nil {
-					shared.LogWarnf("dest.WriteMessage(): %s: %s\n", err, name)
+					controlLock.Unlock()
+					syncChan <- err
+					break
 				}
 				controlLock.Unlock()
 			}
 		}
 
-		go proxy(sourceControlConn, destControlConn, "sourceControlConn --> destControlConn")
-		go proxy(destControlConn, sourceControlConn, "destControlConn --> sourceControlConn")
-		go proxy(sourceFsConn, destFsConn, "sourceFsConn --> destFsConn")
-		go proxy(destFsConn, sourceFsConn, "destFsConn --> sourceFsConn")
+		go proxy(sourceControlConn, destControlConn)
+		go proxy(destControlConn, sourceControlConn)
+		go proxy(sourceFsConn, destFsConn)
+		go proxy(destFsConn, sourceFsConn)
 		if criuSecret {
-			go proxy(sourceCriuConn, destCriuConn, "sourceCriuConn --> destCriuConn")
-			go proxy(destCriuConn, sourceCriuConn, "destCriuConn --> sourceCriuConn")
+			go proxy(sourceCriuConn, destCriuConn)
+			go proxy(destCriuConn, sourceCriuConn)
 		}
 
-		time.Sleep(20 * time.Second)
+		for i := 0; i < cap(syncChan); i++ {
+			<-syncChan
+		}
 
-		// err = c.Send(sourceControlConn, buf)
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// buf, err := c.Recv(sourceControlConn)
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// shared.LogWarnf("0000")
-
-		// err = c.Send(sourceControlConn, buf)
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// shared.LogWarnf("1111")
 		return nil, nil
 	}
 

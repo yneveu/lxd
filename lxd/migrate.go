@@ -105,9 +105,7 @@ func (c *migrationFields) disconnect() {
 	 * anyway.
 	 */
 	if c.fsConn != nil {
-		c.fsConn.WriteMessage(websocket.CloseMessage, closeMsg)
 		c.fsConn.Close()
-		c.fsConn = nil
 	}
 
 	if c.criuConn != nil {
