@@ -2159,17 +2159,17 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 				mt, payload, err := src.ReadMessage()
 				if err != nil {
 					if err != io.EOF {
-						shared.LogWarnf("%s\n", err)
+						shared.LogWarnf("err != io.EOF: %s\n", err)
 						break
 					}
-					shared.LogWarnf("%s\n", err)
+					shared.LogWarnf("err == io.EOF: %s\n", err)
 				}
 				shared.LogWarnf("middle")
 				var controlLock sync.Mutex
 				controlLock.Lock()
 				defer controlLock.Unlock()
 				if err = dest.WriteMessage(mt, payload); err != nil {
-					shared.LogWarnf("%s\n", err)
+					shared.LogWarnf("WriteMessage(): %s\n", err)
 					break
 				}
 				shared.LogWarnf("start")
