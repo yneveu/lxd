@@ -21,8 +21,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 	"syscall"
+	"time"
 
 	"github.com/gorilla/websocket"
 
@@ -2158,13 +2158,16 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 				shared.LogWarnf("start")
 				mt, payload, err := src.ReadMessage()
 				if err != nil {
-					shared.LogWarnf("%s\n", err)
 					if err != io.EOF {
 						shared.LogWarnf("%s\n", err)
 						break
 					}
+					shared.LogWarnf("%s\n", err)
 				}
 				shared.LogWarnf("middle")
+				var controlLock sync.Mutex
+				controlLock.Lock()
+				defer controlLock.Unlock()
 				if err = dest.WriteMessage(mt, payload); err != nil {
 					shared.LogWarnf("%s\n", err)
 					break
