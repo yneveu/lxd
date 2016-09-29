@@ -2153,39 +2153,35 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 			}
 		}
 
-		proxy := func(src *websocket.Conn, dest *websocket.Conn) {
+		proxy := func(src *websocket.Conn, dest *websocket.Conn, name string) {
 			for {
-				shared.LogWarnf("start")
 				mt, payload, err := src.ReadMessage()
 				if err != nil {
 					if err != io.EOF {
-						shared.LogWarnf("err != io.EOF: %s\n", err)
+						shared.LogWarnf("src.ReadMessage(): err != io.EOF: %s: %s\n", err, name)
 						break
 					}
-					shared.LogWarnf("err == io.EOF: %s\n", err)
+					shared.LogWarnf("src.ReadMessage(): err != nil: %s: %s\n", err, name)
 				}
-				shared.LogWarnf("middle")
 				var controlLock sync.Mutex
 				controlLock.Lock()
-				defer controlLock.Unlock()
 				if err = dest.WriteMessage(mt, payload); err != nil {
-					shared.LogWarnf("WriteMessage(): %s\n", err)
-					break
+					shared.LogWarnf("dest.WriteMessage(): %s: %s\n", err, name)
 				}
-				shared.LogWarnf("start")
+				controlLock.Unlock()
 			}
 		}
 
-		go proxy(sourceControlConn, destControlConn)
-		go proxy(destControlConn, sourceControlConn)
-		go proxy(sourceFsConn, destFsConn)
-		go proxy(destFsConn, sourceFsConn)
+		go proxy(sourceControlConn, destControlConn, "sourceControlConn --> destControlConn")
+		go proxy(destControlConn, sourceControlConn, "destControlConn --> sourceControlConn")
+		go proxy(sourceFsConn, destFsConn, "sourceFsConn --> destFsConn")
+		go proxy(destFsConn, sourceFsConn, "destFsConn --> sourceFsConn")
 		if criuSecret {
-			go proxy(sourceCriuConn, destCriuConn)
-			go proxy(destCriuConn, sourceCriuConn)
+			go proxy(sourceCriuConn, destCriuConn, "sourceCriuConn --> destCriuConn")
+			go proxy(destCriuConn, sourceCriuConn, "destCriuConn --> sourceCriuConn")
 		}
 
-		time.Sleep(10 * time.Second)
+		time.Sleep(20 * time.Second)
 
 		// err = c.Send(sourceControlConn, buf)
 		// if err != nil {
