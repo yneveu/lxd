@@ -128,7 +128,7 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 			return err
 		}
 
-		if destResource == "" {
+		// if destResource == "" {
 			op, err := cp.MetadataAsOperation()
 			if err != nil {
 				return fmt.Errorf(i18n.G("didn't get any affected image, container or snapshot from server"))
@@ -141,7 +141,7 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 
 			fields := strings.Split(containers[0], "/")
 			fmt.Printf(i18n.G("Container name is: %s")+"\n", fields[len(fields)-1])
-		}
+		// }
 
 		return nil
 	}
