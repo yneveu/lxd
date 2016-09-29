@@ -212,9 +212,11 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 			continue
 		}
 
-		if err = dest.WaitForSuccess(migration.Operation); err != nil {
-			return err
-		}
+                if !usePush {
+                        if err = dest.WaitForSuccess(migration.Operation); err != nil {
+                                return err
+                        }
+                }
 
 		if destResource == "" {
 			op, err := migration.MetadataAsOperation()
