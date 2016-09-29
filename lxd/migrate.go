@@ -824,10 +824,12 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 		restore <- nil
 	}(c)
 
-	// source := c.controlChannel()
-	// if c.push {
-	source := c.sink.controlChannel()
-	// }
+	var source <-chan MigrationControl
+	if c.push {
+		source = c.sink.controlChannel()
+	} else {
+		source = c.controlChannel()
+	}
 
 	for {
 		select {
