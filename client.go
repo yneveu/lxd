@@ -2152,97 +2152,27 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 			}
 		}
 
-		errControl := make(chan error, 4)
-
-		go func() {
+		proxy := func(src *websocket.Conn, dest *websocket.Conn) {
 			for {
-				buf, err := c.Recv(destControlConn)
+				mt, payload, err := src.ReadMessage()
 				if err != nil {
-					shared.LogWarnf("sourceControlConn recv()")
-					errControl <- err
-					return
-				}
-				err = c.Send(sourceControlConn, buf)
-				if err != nil {
-					shared.LogWarnf("destControlConn send()")
-					errControl <- err
-					return
-				}
-			}
-		}()
-
-		go func() {
-			for {
-				buf, err := c.Recv(sourceControlConn)
-				if err != nil {
-					shared.LogWarnf("sourceControlConn recv()")
-					errControl <- err
-					return
-				}
-				err = c.Send(destControlConn, buf)
-				if err != nil {
-					shared.LogWarnf("destControlConn send()")
-					errControl <- err
-					return
-				}
-			}
-		}()
-
-		go func() {
-			for {
-				buf, err := c.Recv(sourceFsConn)
-				if err != nil {
-					shared.LogWarnf("sourceFsConn recv()")
-					errControl <- err
-					return
-				}
-				err = c.Send(destFsConn, buf)
-				if err != nil {
-					shared.LogWarnf("destFsConn send()")
-					errControl <- err
-					return
-				}
-			}
-		}()
-
-		go func() {
-			for {
-				buf, err := c.Recv(destFsConn)
-				if err != nil {
-					shared.LogWarnf("sourceFsConn recv()")
-					errControl <- err
-					return
-				}
-				err = c.Send(sourceFsConn, buf)
-				if err != nil {
-					shared.LogWarnf("destFsConn send()")
-					errControl <- err
-					return
-				}
-			}
-		}()
-
-		if criuSecret {
-			go func() {
-				for {
-					buf, err := c.Recv(sourceCriuConn)
-					if err != nil {
-						shared.LogWarnf("sourceCriuConn recv()")
-						errControl <- err
-						return
-					}
-					err = c.Send(destCriuConn, buf)
-					if err != nil {
-						shared.LogWarnf("sourceCriuConn send()")
-						errControl <- err
-						return
+					if err != io.EOF {
+						break
 					}
 				}
-			}()
+				if err = dest.WriteMessage(mt, payload); err != nil {
+					break
+				}
+			}
 		}
 
-		for i := 0; i < cap(errControl); i++ {
-			shared.LogWarnf("Error: %s\n", <-errControl)
+		go proxy(sourceControlConn, destControlConn)
+		go proxy(destControlConn, sourceControlConn)
+		go proxy(sourceFsConn, destFsConn)
+		go proxy(destFsConn, sourceFsConn)
+		if criuSecret {
+			go proxy(sourceCriuConn, destCriuConn)
+			go proxy(destCriuConn, sourceCriuConn)
 		}
 
 		// err = c.Send(sourceControlConn, buf)
