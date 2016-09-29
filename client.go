@@ -2157,6 +2157,7 @@ func (c *Client) MigrateFrom(name string, operation string, certificate string,
 			capacity += 2
 		}
 		syncChan := make(chan error, capacity)
+		defer close(syncChan)
 
 		proxy := func(src *websocket.Conn, dest *websocket.Conn) {
 			for {
