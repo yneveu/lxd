@@ -7,7 +7,7 @@
 msgid   ""
 msgstr  "Project-Id-Version: lxd\n"
         "Report-Msgid-Bugs-To: lxc-devel@lists.linuxcontainers.org\n"
-        "POT-Creation-Date: 2016-09-22 02:02-0400\n"
+        "POT-Creation-Date: 2016-10-01 17:11+0200\n"
         "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
         "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
         "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -210,7 +210,7 @@ msgstr  ""
 msgid   "Columns"
 msgstr  ""
 
-#: lxc/copy.go:31 lxc/copy.go:32 lxc/init.go:135 lxc/init.go:136 lxc/launch.go:40 lxc/launch.go:41
+#: lxc/copy.go:33 lxc/copy.go:34 lxc/init.go:135 lxc/init.go:136 lxc/launch.go:40 lxc/launch.go:41
 msgid   "Config key/value to apply to the new container"
 msgstr  ""
 
@@ -227,7 +227,7 @@ msgstr  ""
 msgid   "Container name is mandatory"
 msgstr  ""
 
-#: lxc/copy.go:140 lxc/copy.go:228 lxc/init.go:227
+#: lxc/copy.go:143 lxc/copy.go:233 lxc/init.go:227
 #, c-format
 msgid   "Container name is: %s"
 msgstr  ""
@@ -241,10 +241,10 @@ msgstr  ""
 msgid   "Copy aliases from source"
 msgstr  ""
 
-#: lxc/copy.go:24
+#: lxc/copy.go:26
 msgid   "Copy containers within or in between lxd instances.\n"
         "\n"
-        "lxc copy [remote:]<source container> [[remote:]<destination container>] [--ephemeral|e] [--profile|-p <profile>...] [--config|-c <key=value>...]"
+        "lxc copy [remote:]<source container> [[remote:]<destination container>] [--ephemeral|e] [--push] [--profile|-p <profile>...] [--config|-c <key=value>...]"
 msgstr  ""
 
 #: lxc/image.go:280
@@ -336,7 +336,7 @@ msgstr  ""
 msgid   "Environment:"
 msgstr  ""
 
-#: lxc/copy.go:35 lxc/copy.go:36 lxc/init.go:139 lxc/init.go:140 lxc/launch.go:44 lxc/launch.go:45
+#: lxc/copy.go:37 lxc/copy.go:38 lxc/init.go:139 lxc/init.go:140 lxc/launch.go:44 lxc/launch.go:45
 msgid   "Ephemeral container"
 msgstr  ""
 
@@ -1000,7 +1000,7 @@ msgstr  ""
 msgid   "Profile %s removed from %s"
 msgstr  ""
 
-#: lxc/copy.go:33 lxc/copy.go:34 lxc/init.go:137 lxc/init.go:138 lxc/launch.go:42 lxc/launch.go:43
+#: lxc/copy.go:35 lxc/copy.go:36 lxc/init.go:137 lxc/init.go:138 lxc/launch.go:42 lxc/launch.go:43
 msgid   "Profile to apply to the new container"
 msgstr  ""
 
@@ -1281,6 +1281,10 @@ msgstr  ""
 msgid   "Usage: lxc [subcommand] [options]"
 msgstr  ""
 
+#: lxc/copy.go:39
+msgid   "Use push mode"
+msgstr  ""
+
 #: lxc/delete.go:46
 msgid   "User aborted delete operation."
 msgstr  ""
@@ -1313,7 +1317,7 @@ msgstr  ""
 msgid   "bad result type from action"
 msgstr  ""
 
-#: lxc/copy.go:115
+#: lxc/copy.go:118
 msgid   "can't copy to the same container name"
 msgstr  ""
 
@@ -1333,7 +1337,7 @@ msgstr  ""
 msgid   "default"
 msgstr  ""
 
-#: lxc/copy.go:131 lxc/copy.go:136 lxc/copy.go:219 lxc/copy.go:224 lxc/init.go:217 lxc/init.go:222 lxc/launch.go:111 lxc/launch.go:116
+#: lxc/copy.go:134 lxc/copy.go:139 lxc/copy.go:224 lxc/copy.go:229 lxc/init.go:217 lxc/init.go:222 lxc/launch.go:111 lxc/launch.go:116
 msgid   "didn't get any affected image, container or snapshot from server"
 msgstr  ""
 
@@ -1363,7 +1367,7 @@ msgstr  ""
 msgid   "no"
 msgstr  ""
 
-#: lxc/copy.go:158
+#: lxc/copy.go:161
 msgid   "not all the profiles from the source exist on the target"
 msgstr  ""
 
@@ -1425,7 +1429,7 @@ msgstr  ""
 msgid   "yes"
 msgstr  ""
 
-#: lxc/copy.go:44
+#: lxc/copy.go:47
 msgid   "you must specify a source container name"
 msgstr  ""
 
