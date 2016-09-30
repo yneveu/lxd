@@ -533,26 +533,53 @@ type MigrationSinkArgs struct {
 	Push      bool
 }
 
-func NewMigrationSink(args *MigrationSinkArgs) (*migrationSink, error) {
+func NewMigrationSink(args *MigrationSinkArgs, push bool) (*migrationSink, error) {
 	sink := migrationSink{
 		src:    migrationFields{container: args.Container},
 		url:    args.Url,
 		dialer: args.Dialer,
+		push:   args.Push,
 	}
 
-	var ok bool
+	if push {
+		sink.allConnected = make(chan bool, 1)
+	}
+
+	var (
+		ok  bool
+		err error
+	)
 	sink.src.controlSecret, ok = args.Secrets["control"]
 	if !ok {
 		return nil, fmt.Errorf("Missing control secret")
+	}
+	if push {
+		sink.dest.controlSecret, err = shared.RandomCryptoString()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	sink.src.fsSecret, ok = args.Secrets["fs"]
 	if !ok {
 		return nil, fmt.Errorf("Missing fs secret")
 	}
+	if push {
+		sink.dest.fsSecret, err = shared.RandomCryptoString()
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	sink.src.criuSecret, ok = args.Secrets["criu"]
 	sink.src.live = ok
+	if push && ok {
+		sink.dest.criuSecret, err = shared.RandomCryptoString()
+		if err != nil {
+			return nil, err
+		}
+		sink.dest.live = ok
+	}
 
 	if err := findCriu("destination"); sink.src.live && err != nil {
 		return nil, err
