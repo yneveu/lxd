@@ -648,36 +648,64 @@ func (s *migrationSink) Connect(op *operation, r *http.Request, w http.ResponseW
 func (c *migrationSink) Do(migrateOp *operation) error {
 	var err error
 
+	if c.push {
+		<-c.allConnected
+	}
+
 	// Start the storage for this container (LVM mount/umount)
 	c.src.container.StorageStart()
 
-	c.src.controlConn, err = c.connectWithSecret(c.src.controlSecret)
-	if err != nil {
-		c.src.container.StorageStop()
-		return err
-	}
-	defer c.src.disconnect()
-
-	c.src.fsConn, err = c.connectWithSecret(c.src.fsSecret)
-	if err != nil {
-		c.src.container.StorageStop()
-		c.src.sendControl(err)
-		return err
+	disconnector := c.src.disconnect
+	if c.push {
+		disconnector = c.dest.disconnect
 	}
 
-	if c.src.live {
-		c.src.criuConn, err = c.connectWithSecret(c.src.criuSecret)
+	if c.push {
+		defer disconnector()
+	} else {
+		c.src.controlConn, err = c.connectWithSecret(c.src.controlSecret)
+		if err != nil {
+			c.src.container.StorageStop()
+			return err
+		}
+		defer c.src.disconnect()
+
+		c.src.fsConn, err = c.connectWithSecret(c.src.fsSecret)
 		if err != nil {
 			c.src.container.StorageStop()
 			c.src.sendControl(err)
 			return err
 		}
+
+		if c.src.live {
+			c.src.criuConn, err = c.connectWithSecret(c.src.criuSecret)
+			if err != nil {
+				c.src.container.StorageStop()
+				c.src.sendControl(err)
+				return err
+			}
+		}
+	}
+
+	receiver := c.src.recv
+	if c.push {
+		receiver = c.dest.recv
+	}
+
+	sender := c.src.send
+	if c.push {
+		sender = c.dest.send
+	}
+
+	controller := c.src.sendControl
+	if c.push {
+		controller = c.dest.sendControl
 	}
 
 	header := MigrationHeader{}
-	if err := c.src.recv(&header); err != nil {
+	if err := receiver(&header); err != nil {
 		c.src.container.StorageStop()
-		c.src.sendControl(err)
+		controller(err)
 		return err
 	}
 
@@ -701,9 +729,9 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 		resp.Fs = &myType
 	}
 
-	if err := c.src.send(&resp); err != nil {
+	if err := sender(&resp); err != nil {
 		c.src.container.StorageStop()
-		c.src.sendControl(err)
+		controller(err)
 		return err
 	}
 
@@ -746,7 +774,11 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 				snapshots = header.Snapshots
 			}
 
-			if err := mySink(c.src.live, c.src.container, header.Snapshots, c.src.fsConn, srcIdmap); err != nil {
+			fsConn := c.src.fsConn
+			if c.push {
+				fsConn = c.dest.fsConn
+			}
+			if err := mySink(c.src.live, c.src.container, header.Snapshots, fsConn, srcIdmap); err != nil {
 				fsTransfer <- err
 				return
 			}
@@ -769,7 +801,11 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 
 			defer os.RemoveAll(imagesDir)
 
-			if err := RsyncRecv(shared.AddSlash(imagesDir), c.src.criuConn); err != nil {
+			criuConn := c.src.criuConn
+			if c.push {
+				criuConn = c.dest.criuConn
+			}
+			if err := RsyncRecv(shared.AddSlash(imagesDir), criuConn); err != nil {
 				restore <- err
 				return
 			}
@@ -793,23 +829,28 @@ func (c *migrationSink) Do(migrateOp *operation) error {
 		restore <- nil
 	}(c)
 
-	source := c.src.controlChannel()
+	var source <-chan MigrationControl
+	if c.push {
+		source = c.dest.controlChannel()
+	} else {
+		source = c.src.controlChannel()
+	}
 
 	for {
 		select {
 		case err = <-restore:
 			c.src.container.StorageStop()
-			c.src.sendControl(err)
+			controller(err)
 			return err
 		case msg, ok := <-source:
 			if !ok {
 				c.src.container.StorageStop()
-				c.src.disconnect()
+				disconnector()
 				return fmt.Errorf("Got error reading source")
 			}
 			if !*msg.Success {
 				c.src.container.StorageStop()
-				c.src.disconnect()
+				disconnector()
 				return fmt.Errorf(*msg.Message)
 			} else {
 				// The source can only tell us it failed (e.g. if
