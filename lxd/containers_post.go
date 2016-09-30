@@ -201,8 +201,9 @@ func createFromNone(d *Daemon, req *containerPostReq) Response {
 }
 
 func createFromMigration(d *Daemon, req *containerPostReq) Response {
-	if req.Source.Mode != "pull" {
-		return NotImplemented
+	push := false
+	if req.Source.Mode == "push" {
+		push = true
 	}
 
 	architecture, err := shared.ArchitectureId(req.Architecture)
@@ -275,9 +276,10 @@ func createFromMigration(d *Daemon, req *containerPostReq) Response {
 			NetDial:         shared.RFC3493Dialer},
 		Container: c,
 		Secrets:   req.Source.Websockets,
+		Push:      push,
 	}
 
-	sink, err := NewMigrationSink(&migrationArgs)
+	sink, err := NewMigrationSink(&migrationArgs, push)
 	if err != nil {
 		c.Delete()
 		return InternalError(err)
@@ -286,9 +288,17 @@ func createFromMigration(d *Daemon, req *containerPostReq) Response {
 	resources := map[string][]string{}
 	resources["containers"] = []string{req.Name}
 
-	op, err := operationCreate(operationClassTask, resources, nil, sink.Do, nil, nil)
-	if err != nil {
-		return InternalError(err)
+	var op *operation
+	if push {
+		op, err = operationCreate(operationClassWebsocket, resources, sink.Metadata(), sink.Do, nil, sink.Connect)
+		if err != nil {
+			return InternalError(err)
+		}
+	} else {
+		op, err = operationCreate(operationClassTask, resources, nil, sink.Do, nil, nil)
+		if err != nil {
+			return InternalError(err)
+		}
 	}
 
 	return OperationResponse(op)
