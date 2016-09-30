@@ -16,6 +16,8 @@ type copyCmd struct {
 	ephem    bool
 }
 
+var usePush bool
+
 func (c *copyCmd) showByDefault() bool {
 	return true
 }
@@ -24,7 +26,7 @@ func (c *copyCmd) usage() string {
 	return i18n.G(
 		`Copy containers within or in between lxd instances.
 
-lxc copy [remote:]<source container> [[remote:]<destination container>] [--ephemeral|e] [--profile|-p <profile>...] [--config|-c <key=value>...]`)
+lxc copy [remote:]<source container> [[remote:]<destination container>] [--ephemeral|e] [--push] [--profile|-p <profile>...] [--config|-c <key=value>...]`)
 }
 
 func (c *copyCmd) flags() {
@@ -34,6 +36,7 @@ func (c *copyCmd) flags() {
 	gnuflag.Var(&c.profArgs, "p", i18n.G("Profile to apply to the new container"))
 	gnuflag.BoolVar(&c.ephem, "ephemeral", false, i18n.G("Ephemeral container"))
 	gnuflag.BoolVar(&c.ephem, "e", false, i18n.G("Ephemeral container"))
+	gnuflag.BoolVar(&usePush, "push", false, i18n.G("Use push mode"))
 }
 
 func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destResource string, keepVolatile bool, ephemeral int) error {
@@ -204,7 +207,7 @@ func (c *copyCmd) copyContainer(config *lxd.Config, sourceResource string, destR
 		var migration *lxd.Response
 
 		sourceWSUrl := "https://" + addr + sourceWSResponse.Operation
-		migration, err = dest.MigrateFrom(destName, sourceWSUrl, source.Certificate, secrets, status.Architecture, status.Config, status.Devices, status.Profiles, baseImage, ephemeral == 1, false, source, sourceWSResponse.Operation)
+		migration, err = dest.MigrateFrom(destName, sourceWSUrl, source.Certificate, secrets, status.Architecture, status.Config, status.Devices, status.Profiles, baseImage, ephemeral == 1, usePush, source, sourceWSResponse.Operation)
 		if err != nil {
 			continue
 		}
