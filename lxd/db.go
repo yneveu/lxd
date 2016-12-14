@@ -188,6 +188,19 @@ CREATE TABLE IF NOT EXISTS schema (
     version INTEGER NOT NULL,
     updated_at DATETIME NOT NULL,
     UNIQUE (version)
+);
+CREATE TABLE IF NOT EXISTS storage_pools (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    UNIQUE (name)
+);
+CREATE TABLE IF NOT EXISTS storage_pools_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    storage_pool_id INTEGER NOT NULL,
+    key VARCHAR(255) NOT NULL,
+    value TEXT,
+    UNIQUE (storage_pool_id, key),
+    FOREIGN KEY (storage_pool_id) REFERENCES storage_pools (id) ON DELETE CASCADE
 );`
 
 // Create the initial (current) schema for a given SQLite DB connection.

@@ -68,6 +68,7 @@ var dbUpdates = []dbUpdate{
 	dbUpdate{version: 32, run: dbUpdateFromV31},
 	dbUpdate{version: 33, run: dbUpdateFromV32},
 	dbUpdate{version: 34, run: dbUpdateFromV33},
+	dbUpdate{version: 35, run: dbUpdateFromV34},
 }
 
 type dbUpdate struct {
@@ -124,6 +125,25 @@ func dbUpdatesApplyAll(d *Daemon) error {
 }
 
 // Schema updates begin here
+func dbUpdateFromV34(currentVersion int, version int, d *Daemon) error {
+	stmt := `
+CREATE TABLE IF NOT EXISTS storage_pools (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    UNIQUE (name)
+);
+CREATE TABLE IF NOT EXISTS storage_pools_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    storage_pool_id INTEGER NOT NULL,
+    key VARCHAR(255) NOT NULL,
+    value TEXT,
+    UNIQUE (storage_pool_id, key),
+    FOREIGN KEY (storage_pool_id) REFERENCES storage_pools (id) ON DELETE CASCADE
+);`
+	_, err := d.db.Exec(stmt)
+	return err
+}
+
 func dbUpdateFromV33(currentVersion int, version int, d *Daemon) error {
 	stmt := `
 CREATE TABLE IF NOT EXISTS networks (
