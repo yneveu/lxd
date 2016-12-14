@@ -161,6 +161,16 @@ type NetworkConfig struct {
 	UsedBy  []string          `json:"used_by"`
 }
 
+type StoragePoolConfig struct {
+	// name of storage pool
+	Name   string            `json:"name"`
+	Config map[string]string `json:"config"`
+	// driver (string, default=””, Name of storage driver (zfs, dir, ...))
+	Driver string `json:"driver"`
+	// containers that use this storage pool
+	UsedBy []string `json:"used_by"`
+}
+
 func IsInt64(value string) error {
 	if value == "" {
 		return nil

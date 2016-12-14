@@ -42,6 +42,10 @@ var api10 = []Command{
 	certificateFingerprintCmd,
 	profilesCmd,
 	profileCmd,
+	storagePoolsCmd,
+	storagePoolCmd,
+	storageVolumesCmd,
+	storageVolumeCmd,
 }
 
 func api10Get(d *Daemon, r *http.Request) Response {

@@ -2827,3 +2827,60 @@ func (c *Client) ListNetworks() ([]shared.NetworkConfig, error) {
 
 	return networks, nil
 }
+
+// Storage functions
+func (c *Client) ListStoragePools() ([]shared.StoragePoolConfig, error) {
+	if c.Remote.Public {
+		return nil, fmt.Errorf("This function isn't supported by public remotes.")
+	}
+
+	resp, err := c.get("storage-pools?recursion=1")
+	if err != nil {
+		return nil, err
+	}
+
+	pools := []shared.StoragePoolConfig{}
+	if err := json.Unmarshal(resp.Metadata, &pools); err != nil {
+		return nil, err
+	}
+
+	return pools, nil
+}
+
+func (c *Client) StoragePoolCreate(name string, config map[string]string) error {
+	if c.Remote.Public {
+		return fmt.Errorf("This function isn't supported by public remotes.")
+	}
+
+	body := shared.Jmap{"name": name, "config": config}
+
+	_, err := c.post("storage-pools", body, Sync)
+	return err
+}
+
+func (c *Client) StoragePoolDelete(name string) error {
+	if c.Remote.Public {
+		return fmt.Errorf("This function isn't supported by public remotes.")
+	}
+
+	_, err := c.delete(fmt.Sprintf("storage-pools/%s", name), nil, Sync)
+	return err
+}
+
+func (c *Client) StoragePoolGet(name string) (shared.StoragePoolConfig, error) {
+	if c.Remote.Public {
+		return shared.StoragePoolConfig{}, fmt.Errorf("This function isn't supported by public remotes.")
+	}
+
+	resp, err := c.get(fmt.Sprintf("storage-pools/%s", name))
+	if err != nil {
+		return shared.StoragePoolConfig{}, err
+	}
+
+	pools := shared.StoragePoolConfig{}
+	if err := json.Unmarshal(resp.Metadata, &pools); err != nil {
+		return shared.StoragePoolConfig{}, err
+	}
+
+	return pools, nil
+}

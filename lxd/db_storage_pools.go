@@ -9,6 +9,7 @@ import (
 	"github.com/lxc/lxd/shared"
 )
 
+// Get all storage pools.
 func dbStoragePools(db *sql.DB) ([]string, error) {
 	q := fmt.Sprintf("SELECT name FROM storage_pools")
 	inargs := []interface{}{}
@@ -27,6 +28,7 @@ func dbStoragePools(db *sql.DB) ([]string, error) {
 	return response, nil
 }
 
+// Get a single storage pool.
 func dbStoragePoolGet(db *sql.DB, pool string) (int64, *shared.StoragePoolConfig, error) {
 	id := int64(-1)
 
@@ -50,6 +52,7 @@ func dbStoragePoolGet(db *sql.DB, pool string) (int64, *shared.StoragePoolConfig
 	}, nil
 }
 
+// Get config of a storage pool.
 func dbStoragePoolConfigGet(db *sql.DB, id int64) (map[string]string, error) {
 	var key, value string
 	query := `
@@ -94,6 +97,7 @@ func dbStoragePoolConfigGet(db *sql.DB, id int64) (map[string]string, error) {
 	return config, nil
 }
 
+// Create new storage pool table.
 func dbStoragePoolCreate(db *sql.DB, name string, config map[string]string) (int64, error) {
 	tx, err := dbBegin(db)
 	if err != nil {
@@ -126,6 +130,7 @@ func dbStoragePoolCreate(db *sql.DB, name string, config map[string]string) (int
 	return id, nil
 }
 
+// Add new storage pool config into database.
 func dbStoragePoolConfigAdd(tx *sql.Tx, id int64, config map[string]string) error {
 	str := fmt.Sprintf("INSERT INTO storage_pools_config (storage_pool_id, key, value) VALUES(?, ?, ?)")
 	stmt, err := tx.Prepare(str)
@@ -145,6 +150,7 @@ func dbStoragePoolConfigAdd(tx *sql.Tx, id int64, config map[string]string) erro
 	return nil
 }
 
+// Update storage pool.
 func dbStoragePoolUpdate(db *sql.DB, name string, config map[string]string) error {
 	id, _, err := dbStoragePoolGet(db, name)
 	if err != nil {
@@ -171,6 +177,7 @@ func dbStoragePoolUpdate(db *sql.DB, name string, config map[string]string) erro
 	return txCommit(tx)
 }
 
+// Delete storage pool config.
 func dbStoragePoolConfigClear(tx *sql.Tx, id int64) error {
 	_, err := tx.Exec("DELETE FROM storage_pools_config WHERE storage_pool_id=?", id)
 	if err != nil {
@@ -180,6 +187,7 @@ func dbStoragePoolConfigClear(tx *sql.Tx, id int64) error {
 	return nil
 }
 
+// Delete storage pool
 func dbStoragePoolDelete(db *sql.DB, name string) error {
 	id, _, err := dbStoragePoolGet(db, name)
 	if err != nil {
@@ -206,6 +214,7 @@ func dbStoragePoolDelete(db *sql.DB, name string) error {
 	return txCommit(tx)
 }
 
+// Rename storage pool.
 func dbStoragePoolRename(db *sql.DB, oldName string, newName string) error {
 	id, _, err := dbStoragePoolGet(db, oldName)
 	if err != nil {
