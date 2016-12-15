@@ -79,6 +79,10 @@ func (c *storageCmd) run(config *lxd.Config, args []string) error {
 		return c.doStoragePoolsList(config, args)
 	}
 
+	if len(args) < 2 {
+		return errArgs
+	}
+
 	remote, pool := config.ParseRemoteAndContainer(args[1])
 	client, err := lxd.NewClient(config, remote)
 	if err != nil {
@@ -109,12 +113,21 @@ func (c *storageCmd) run(config *lxd.Config, args []string) error {
 			return errArgs
 		}
 		return c.doStoragePoolGet(client, pool, args[2:])
-	// case "set":
-	// 	return c.doNetworkSet(client, network, args[2:])
-	// case "unset":
-	// 	return c.doNetworkSet(client, network, args[2:])
-	// case "show":
-	// 	return c.doNetworkShow(client, network)
+	case "set":
+		if len(args) < 2 {
+			return errArgs
+		}
+		return c.doStoragePoolSet(client, pool, args[2:])
+	case "unset":
+		if len(args) < 2 {
+			return errArgs
+		}
+		return c.doStoragePoolSet(client, pool, args[2:])
+	case "show":
+		if len(args) < 2 {
+			return errArgs
+		}
+		return c.doStoragePoolShow(client, pool)
 	default:
 		return errArgs
 	}
@@ -405,7 +418,7 @@ func (c *storageCmd) doStoragePoolsList(config *lxd.Config, args []string) error
 
 	data := [][]string{}
 	for _, pool := range pools {
-		data = append(data, []string{pool.Name, pool.Driver, pool.Config["size"], pool.Config["source"]})
+		data = append(data, []string{pool.Name, pool.Config["driver"], pool.Config["size"], pool.Config["source"]})
 	}
 
 	table := tablewriter.NewWriter(os.Stdout)
@@ -424,13 +437,13 @@ func (c *storageCmd) doStoragePoolsList(config *lxd.Config, args []string) error
 	return nil
 }
 
-func (c *storageCmd) doNetworkSet(client *lxd.Client, name string, args []string) error {
+func (c *storageCmd) doStoragePoolSet(client *lxd.Client, name string, args []string) error {
 	// we shifted @args so so it should read "<key> [<value>]"
 	if len(args) < 1 {
 		return errArgs
 	}
 
-	network, err := client.NetworkGet(name)
+	pool, err := client.StoragePoolGet(name)
 	if err != nil {
 		return err
 	}
@@ -451,18 +464,18 @@ func (c *storageCmd) doNetworkSet(client *lxd.Client, name string, args []string
 		value = string(buf[:])
 	}
 
-	network.Config[key] = value
+	pool.Config[key] = value
 
-	return client.NetworkPut(name, network)
+	return client.StoragePoolPut(name, pool)
 }
 
-func (c *storageCmd) doNetworkShow(client *lxd.Client, name string) error {
-	network, err := client.NetworkGet(name)
+func (c *storageCmd) doStoragePoolShow(client *lxd.Client, name string) error {
+	pool, err := client.StoragePoolGet(name)
 	if err != nil {
 		return err
 	}
 
-	data, err := yaml.Marshal(&network)
+	data, err := yaml.Marshal(&pool)
 	fmt.Printf("%s", data)
 
 	return nil

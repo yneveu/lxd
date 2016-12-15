@@ -15,7 +15,7 @@ var storagePoolConfigKeys = map[string]func(value string) error{
 	"size":   shared.IsAny,
 	"volume.block.mount_options":  shared.IsAny,
 	"volume.block.filesystem":     shared.IsAny,
-	"volume.size":                 shared.IsInt64,
+	"volume.size":                 shared.IsAny,
 	"volume.zfs.use_refquota":     shared.IsBool,
 	"volume.zfs.remove_snapshots": shared.IsBool,
 	"zfs.pool_name":               shared.IsAny,
@@ -67,6 +67,12 @@ func storagePoolValidateConfig(name string, config map[string]string) error {
 			if err != nil {
 				return err
 			}
+		}
+	}
+
+	if config["driver"] == "zfs" {
+		if val, ok := config["zfs.pool_name"]; !ok || val == "" {
+			config["zfs.pool_name"] = name
 		}
 	}
 

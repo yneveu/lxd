@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	// "os/exec"
+	"os"
 	"regexp"
 	// "strings"
 	// log "gopkg.in/inconshreveable/log15.v2"
@@ -29,16 +30,20 @@ func storagePoolValidName(value string) error {
 }
 
 func doStoragePoolGet(d *Daemon, name string) (shared.StoragePoolConfig, error) {
+	_, pool, _ := dbStoragePoolGet(d.db, name)
+
+	// Sanity check
+	if pool == nil {
+		return shared.StoragePoolConfig{}, os.ErrNotExist
+	}
+
 	// Prepare the response
 	s := shared.StoragePoolConfig{}
 	s.Name = name
 	s.UsedBy = []string{}
 	s.Config = map[string]string{}
 
-	_, pool, _ := dbStoragePoolGet(d.db, name)
-
 	s.Name = pool.Name
-	s.Driver = pool.Driver
 	s.Config = pool.Config
 
 	// Look for containers using this storage pool.
@@ -55,4 +60,17 @@ func doStoragePoolGet(d *Daemon, name string) (shared.StoragePoolConfig, error) 
 	// }
 
 	return s, nil
+}
+
+type sourceType int
+
+const (
+	sourcePath sourceType = iota
+	sourceLoopfile
+	sourceBlockDev
+	sourceZfsDataset
+)
+
+func detectSourceType(source string) (sourceType, error) {
+	return sourcePath, nil
 }

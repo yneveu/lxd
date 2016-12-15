@@ -116,15 +116,76 @@ var storagePoolsCmd = Command{name: "storage-pools", get: storagePoolsGet, post:
 
 // /1.0/storage-pools/<pool name>
 func storagePoolGet(d *Daemon, r *http.Request) Response {
-	return nil
+	name := mux.Vars(r)["name"]
+
+	s, err := doStoragePoolGet(d, name)
+	if err != nil {
+		return SmartError(err)
+	}
+
+	etag := []interface{}{s.Name, s.UsedBy, s.Config}
+
+	return SyncResponseETag(true, &s, etag)
 }
 
 func storagePoolPost(d *Daemon, r *http.Request) Response {
-	return nil
+	name := mux.Vars(r)["name"]
+	req := shared.NetworkConfig{}
+
+	// Parse the request.
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return BadRequest(err)
+	}
+
+	// Get the existing storage pool.
+	s, err := storagePoolLoadByName(d, name)
+	if err != nil {
+		return NotFound
+	}
+
+	// Sanity checks.
+	if req.Name == "" {
+		return BadRequest(fmt.Errorf("No name provided"))
+	}
+
+	err = storagePoolValidName(req.Name)
+	if err != nil {
+		return BadRequest(err)
+	}
+
+	// Rename it
+	err = s.storagePoolRename(req.Name)
+	if err != nil {
+		return SmartError(err)
+	}
+
+	return SyncResponseLocation(true, nil, fmt.Sprintf("/%s/networks/%s", shared.APIVersion, req.Name))
 }
 
 func storagePoolPut(d *Daemon, r *http.Request) Response {
-	return nil
+	name := mux.Vars(r)["name"]
+
+	// Get the existing storage pool.
+	_, dbInfo, err := dbStoragePoolGet(d.db, name)
+	if err != nil {
+		return SmartError(err)
+	}
+
+	// Validate the ETag
+	etag := []interface{}{dbInfo.Name, dbInfo.UsedBy, dbInfo.Config}
+
+	err = etagCheck(r, etag)
+	if err != nil {
+		return PreconditionFailed(err)
+	}
+
+	req := shared.StoragePoolConfig{}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return BadRequest(err)
+	}
+
+	return doStoragePoolUpdate(d, name, dbInfo.Config, req.Config)
 }
 
 func storagePoolPatch(d *Daemon, r *http.Request) Response {
@@ -134,7 +195,7 @@ func storagePoolPatch(d *Daemon, r *http.Request) Response {
 func storagePoolDelete(d *Daemon, r *http.Request) Response {
 	name := mux.Vars(r)["name"]
 
-	// Get the existing network
+	// Get the existing storage pool.
 	s, err := storagePoolLoadByName(d, name)
 	if err != nil {
 		return NotFound
@@ -390,4 +451,161 @@ func zfsPoolListSubvolumes(path string) ([]string, error) {
 	}
 
 	return children, nil
+}
+
+func (s *storagePool) zfsPoolRename(oldname string, newname string, poolOnly bool) error {
+
+	// TODO: Check if any containers or images are using the pool.
+	output, err := exec.Command(
+		"zpool",
+		"export", oldname).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("Failed to delete the ZFS pool: %s", output)
+	}
+
+	output, err = exec.Command(
+		"zpool",
+		"import", oldname, newname).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("Failed to delete the ZFS pool: %s", output)
+	}
+
+	// Cleanup storage
+	vdev := s.config["source"]
+	if filepath.IsAbs(vdev) && !shared.IsBlockdevPath(vdev) && !poolOnly {
+		nvdev := newname
+		if !filepath.IsAbs(newname) {
+			nvdev = filepath.Join(filepath.Dir(vdev), newname)
+		}
+		os.Rename(vdev, nvdev)
+	}
+
+	return nil
+}
+
+func (s *storagePool) storagePoolRename(name string) error {
+	// Rename the database entry
+	err := dbStoragePoolRename(s.daemon.db, s.name, name)
+	if err != nil {
+		return err
+	}
+
+	if s.config["driver"] == "zfs" {
+		return s.zfsPoolRename(s.name, name, s.config["zfs.pool_name"] == "")
+	}
+
+	return nil
+}
+
+func doStoragePoolUpdate(d *Daemon, name string, oldConfig map[string]string, newConfig map[string]string) Response {
+	// Validate the configuration
+	err := storagePoolValidateConfig(name, newConfig)
+	if err != nil {
+		return BadRequest(err)
+	}
+
+	// Load the existing storage pool.
+	s, err := storagePoolLoadByName(d, name)
+	if err != nil {
+		return NotFound
+	}
+
+	if s.config["driver"] == "zfs" {
+		err := s.zfsPoolUpdate(shared.StoragePoolConfig{Config: newConfig})
+		if err != nil {
+			return SmartError(err)
+		}
+	}
+
+	return EmptySyncResponse
+}
+
+func (s *storagePool) zfsPoolUpdate(newPool shared.StoragePoolConfig) error {
+	newConfig := newPool.Config
+
+	// Backup the current state
+	oldConfig := map[string]string{}
+	err := shared.DeepCopy(&s.config, &oldConfig)
+	if err != nil {
+		return err
+	}
+
+	// Define a function which reverts everything.  Defer this function
+	// so that it doesn't need to be explicitly called in every failing
+	// return path.  Track whether or not we want to undo the changes
+	// using a closure.
+	undoChanges := true
+	defer func() {
+		if undoChanges {
+			s.config = oldConfig
+		}
+	}()
+
+	// Diff the configurations
+	changedConfig := []string{}
+	userOnly := true
+	for key, _ := range oldConfig {
+		if oldConfig[key] != newConfig[key] {
+			if !strings.HasPrefix(key, "user.") {
+				userOnly = false
+			}
+
+			if !shared.StringInSlice(key, changedConfig) {
+				changedConfig = append(changedConfig, key)
+			}
+		}
+	}
+
+	for key, _ := range newConfig {
+		if oldConfig[key] != newConfig[key] {
+			if !strings.HasPrefix(key, "user.") {
+				userOnly = false
+			}
+
+			if !shared.StringInSlice(key, changedConfig) {
+				changedConfig = append(changedConfig, key)
+			}
+		}
+	}
+
+	// Skip on no change
+	if len(changedConfig) == 0 {
+		return nil
+	}
+
+	// Update the storage pool
+	if !userOnly {
+		if shared.StringInSlice("driver", changedConfig) {
+			return fmt.Errorf("You cannot change the driver of a storage pool")
+		}
+
+		if shared.StringInSlice("size", changedConfig) {
+			return fmt.Errorf("You cannot change the size of a storage pool")
+		}
+
+		if shared.StringInSlice("source", changedConfig) {
+			return fmt.Errorf("You cannot change the source of a storage pool")
+		}
+	}
+
+	// Apply the new configuration
+	s.config = newConfig
+
+	// Update the database
+	err = dbStoragePoolUpdate(s.daemon.db, s.name, s.config)
+	if err != nil {
+		return err
+	}
+
+	if s.config["zfs.pool_name"] != "" && s.config["zfs.pool_name"] != oldConfig["zfs.pool_name"] {
+		err := s.zfsPoolRename(oldConfig["zfs.pool_name"], s.config["zfs.pool_name"], true)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Success, update the closure to mark that the changes should be kept.
+	undoChanges = false
+
+	return nil
 }

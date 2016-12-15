@@ -2884,3 +2884,16 @@ func (c *Client) StoragePoolGet(name string) (shared.StoragePoolConfig, error) {
 
 	return pools, nil
 }
+
+func (c *Client) StoragePoolPut(name string, pool shared.StoragePoolConfig) error {
+	if c.Remote.Public {
+		return fmt.Errorf("This function isn't supported by public remotes.")
+	}
+
+	if pool.Name != name {
+		return fmt.Errorf("Cannot change storage pool name")
+	}
+
+	_, err := c.put(fmt.Sprintf("storage-pools/%s", name), pool, Sync)
+	return err
+}
