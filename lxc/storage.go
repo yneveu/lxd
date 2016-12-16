@@ -24,7 +24,7 @@ func (c *storageCmd) showByDefault() bool {
 	return true
 }
 
-func (c *storageCmd) networkEditHelp() string {
+func (c *storageCmd) storagePoolEditHelp() string {
 	return i18n.G(
 		`### This is a yaml representation of the network.
 ### Any line starting with a '# will be ignored.
@@ -46,25 +46,25 @@ func (c *storageCmd) networkEditHelp() string {
 
 func (c *storageCmd) usage() string {
 	return i18n.G(
-		`Manage networks.
+		`Manage storage.
 
-lxc network list                               List available networks.
-lxc network show <network>                     Show details of a network.
-lxc network create <network> [key=value]...    Create a network.
-lxc network get <network> <key>                Get network configuration.
-lxc network set <network> <key> <value>        Set network configuration.
-lxc network unset <network> <key>              Unset network configuration.
-lxc network delete <network>                   Delete a network.
-lxc network edit <network>
-    Edit network, either by launching external editor or reading STDIN.
-    Example: lxc network edit <network> # launch editor
-             cat network.yaml | lxc network edit <network> # read from network.yaml
+lxc storage list                               List available storage pools.
+lxc storage show <storage>                     Show details of a storage pool.
+lxc storage create <storage> [key=value]...    Create a storage pool.
+lxc storage get <storage> <key>                Get storage pool configuration.
+lxc storage set <storage> <key> <value>        Set storage pool configuration.
+lxc storage unset <storage> <key>              Unset storage pool configuration.
+lxc storage delete <storage>                   Delete a storage pool.
+lxc storage edit <storage>
+    Edit storage pool, either by launching external editor or reading STDIN.
+    Example: lxc storage edit <storage> # launch editor
+             cat storage.yaml | lxc storage edit <storage> # read from storage.yaml
 
-lxc network attach <network> <container> [device name]
-lxc network attach-profile <network> <profile> [device name]
+lxc storage attach <storage> <container> [device name]
+lxc storage attach-profile <storage> <profile> [device name]
 
-lxc network detach <network> <container> [device name]
-lxc network detach-profile <network> <container> [device name]
+lxc storage detach <storage> <container> [device name]
+lxc storage detach-profile <storage> <container> [device name]
 `)
 }
 
@@ -89,47 +89,92 @@ func (c *storageCmd) run(config *lxd.Config, args []string) error {
 		return err
 	}
 
-	switch args[0] {
-	// case "attach":
-	// 	return c.doNetworkAttach(client, network, args[2:])
-	// case "attach-profile":
-	// 	return c.doNetworkAttachProfile(client, network, args[2:])
-	case "create":
-		if len(args) < 3 {
+	if args[0] == "volume" {
+		switch args[1] {
+		// case "attach":
+		// 	return c.doNetworkAttach(client, network, args[2:])
+		// case "attach-profile":
+		// 	return c.doNetworkAttachProfile(client, network, args[2:])
+		case "create":
+			if len(args) < 3 {
+				return errArgs
+			}
+			driver := strings.Join(args[2:3], "")
+			return c.doStoragePoolCreate(client, pool, driver, args[3:])
+		case "delete":
+			return c.doStoragePoolDelete(client, pool)
+			// case "detach":
+			// 	return c.doNetworkDetach(client, network, args[2:])
+			// case "detach-profile":
+			// 	return c.doNetworkDetachProfile(client, network, args[2:])
+		// case "edit":
+		// 	return c.doStoragePoolEdit(client, pool)
+		// case "get":
+		// 	if len(args) < 2 {
+		// 		return errArgs
+		// 	}
+		// 	return c.doStoragePoolGet(client, pool, args[2:])
+		// case "set":
+		// 	if len(args) < 2 {
+		// 		return errArgs
+		// 	}
+		// 	return c.doStoragePoolSet(client, pool, args[2:])
+		// case "unset":
+		// 	if len(args) < 2 {
+		// 		return errArgs
+		// 	}
+		// 	return c.doStoragePoolSet(client, pool, args[2:])
+		// case "show":
+		// 	if len(args) < 2 {
+		// 		return errArgs
+		// 	}
+		// 	return c.doStoragePoolShow(client, pool)
+		default:
 			return errArgs
 		}
-		driver := strings.Join(args[2:3], "")
-		return c.doStoragePoolCreate(client, pool, driver, args[3:])
-	case "delete":
-		return c.doStoragePoolDelete(client, pool)
-	// case "detach":
-	// 	return c.doNetworkDetach(client, network, args[2:])
-	// case "detach-profile":
-	// 	return c.doNetworkDetachProfile(client, network, args[2:])
-	// case "edit":
-	// 	return c.doNetworkEdit(client, network)
-	case "get":
-		if len(args) < 2 {
+	} else {
+		switch args[0] {
+		// case "attach":
+		// 	return c.doNetworkAttach(client, network, args[2:])
+		// case "attach-profile":
+		// 	return c.doNetworkAttachProfile(client, network, args[2:])
+		case "create":
+			if len(args) < 3 {
+				return errArgs
+			}
+			driver := strings.Join(args[2:3], "")
+			return c.doStoragePoolCreate(client, pool, driver, args[3:])
+		case "delete":
+			return c.doStoragePoolDelete(client, pool)
+			// case "detach":
+			// 	return c.doNetworkDetach(client, network, args[2:])
+			// case "detach-profile":
+			// 	return c.doNetworkDetachProfile(client, network, args[2:])
+		case "edit":
+			return c.doStoragePoolEdit(client, pool)
+		case "get":
+			if len(args) < 2 {
+				return errArgs
+			}
+			return c.doStoragePoolGet(client, pool, args[2:])
+		case "set":
+			if len(args) < 2 {
+				return errArgs
+			}
+			return c.doStoragePoolSet(client, pool, args[2:])
+		case "unset":
+			if len(args) < 2 {
+				return errArgs
+			}
+			return c.doStoragePoolSet(client, pool, args[2:])
+		case "show":
+			if len(args) < 2 {
+				return errArgs
+			}
+			return c.doStoragePoolShow(client, pool)
+		default:
 			return errArgs
 		}
-		return c.doStoragePoolGet(client, pool, args[2:])
-	case "set":
-		if len(args) < 2 {
-			return errArgs
-		}
-		return c.doStoragePoolSet(client, pool, args[2:])
-	case "unset":
-		if len(args) < 2 {
-			return errArgs
-		}
-		return c.doStoragePoolSet(client, pool, args[2:])
-	case "show":
-		if len(args) < 2 {
-			return errArgs
-		}
-		return c.doStoragePoolShow(client, pool)
-	default:
-		return errArgs
 	}
 }
 
@@ -313,7 +358,7 @@ func (c *storageCmd) doStoragePoolDelete(client *lxd.Client, name string) error 
 	return err
 }
 
-func (c *storageCmd) doNetworkEdit(client *lxd.Client, name string) error {
+func (c *storageCmd) doStoragePoolEdit(client *lxd.Client, name string) error {
 	// If stdin isn't a terminal, read text from it
 	if !termios.IsTerminal(int(syscall.Stdin)) {
 		contents, err := ioutil.ReadAll(os.Stdin)
@@ -321,37 +366,37 @@ func (c *storageCmd) doNetworkEdit(client *lxd.Client, name string) error {
 			return err
 		}
 
-		newdata := shared.NetworkConfig{}
+		newdata := shared.StoragePoolConfig{}
 		err = yaml.Unmarshal(contents, &newdata)
 		if err != nil {
 			return err
 		}
-		return client.NetworkPut(name, newdata)
+		return client.StoragePoolPut(name, newdata)
 	}
 
 	// Extract the current value
-	network, err := client.NetworkGet(name)
+	pool, err := client.StoragePoolGet(name)
 	if err != nil {
 		return err
 	}
 
-	data, err := yaml.Marshal(&network)
+	data, err := yaml.Marshal(&pool)
 	if err != nil {
 		return err
 	}
 
 	// Spawn the editor
-	content, err := shared.TextEditor("", []byte(c.networkEditHelp()+"\n\n"+string(data)))
+	content, err := shared.TextEditor("", []byte(c.storagePoolEditHelp()+"\n\n"+string(data)))
 	if err != nil {
 		return err
 	}
 
 	for {
 		// Parse the text received from the editor
-		newdata := shared.NetworkConfig{}
+		newdata := shared.StoragePoolConfig{}
 		err = yaml.Unmarshal(content, &newdata)
 		if err == nil {
-			err = client.NetworkPut(name, newdata)
+			err = client.StoragePoolPut(name, newdata)
 		}
 
 		// Respawn the editor
