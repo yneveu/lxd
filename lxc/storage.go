@@ -96,11 +96,13 @@ func (c *storageCmd) run(config *lxd.Config, args []string) error {
 		// case "attach-profile":
 		// 	return c.doNetworkAttachProfile(client, network, args[2:])
 		case "create":
-			if len(args) < 3 {
+			if len(args) < 4 {
 				return errArgs
 			}
-			driver := strings.Join(args[2:3], "")
-			return c.doStoragePoolCreate(client, pool, driver, args[3:])
+			fmt.Println("AAA")
+			return nil
+			// driver := strings.Join(args[2:3], "")
+			// return c.doStoragePoolCreate(client, pool, driver, args[3:])
 		case "delete":
 			return c.doStoragePoolDelete(client, pool)
 			// case "detach":

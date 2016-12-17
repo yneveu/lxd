@@ -169,6 +169,14 @@ type StoragePoolConfig struct {
 	UsedBy []string `json:"used_by"`
 }
 
+type StorageVolumeConfig struct {
+	// name of storage volume
+	Name   string            `json:"name"`
+	Config map[string]string `json:"config"`
+	// containers that use this storage pool
+	UsedBy []string `json:"used_by"`
+}
+
 func IsInt64(value string) error {
 	if value == "" {
 		return nil

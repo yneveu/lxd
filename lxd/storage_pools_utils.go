@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	// "os/exec"
 	"os"
-	"regexp"
 	// "strings"
 	// log "gopkg.in/inconshreveable/log15.v2"
 	"github.com/lxc/lxd/shared"
@@ -17,16 +15,6 @@ func storagePoolsGetPools(d *Daemon) ([]string, error) {
 	}
 
 	return storagePools, nil
-}
-
-func storagePoolValidName(value string) error {
-	// Validate the character set
-	match, _ := regexp.MatchString("^[-a-zA-Z0-9]*$", value)
-	if !match {
-		return fmt.Errorf("Interface name contains invalid characters")
-	}
-
-	return nil
 }
 
 func doStoragePoolGet(d *Daemon, name string) (shared.StoragePoolConfig, error) {

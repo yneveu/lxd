@@ -63,7 +63,7 @@ func storagePoolsPost(d *Daemon, r *http.Request) Response {
 		return BadRequest(fmt.Errorf("No name provided"))
 	}
 
-	err = storagePoolValidName(req.Name)
+	err = storageValidName(req.Name)
 	if err != nil {
 		return BadRequest(err)
 	}
@@ -149,7 +149,7 @@ func storagePoolPost(d *Daemon, r *http.Request) Response {
 		return BadRequest(fmt.Errorf("No name provided"))
 	}
 
-	err = storagePoolValidName(req.Name)
+	err = storageValidName(req.Name)
 	if err != nil {
 		return BadRequest(err)
 	}
@@ -215,40 +215,6 @@ func storagePoolDelete(d *Daemon, r *http.Request) Response {
 }
 
 var storagePoolCmd = Command{name: "storage-pools/{name}", get: storagePoolGet, post: storagePoolPost, put: storagePoolPut, patch: storagePoolPatch, delete: storagePoolDelete}
-
-// /1.0/storage-pools/<pool-name>/volumes
-func storageVolumesGet(d *Daemon, r *http.Request) Response {
-	return nil
-}
-
-func storageVolumesPost(d *Daemon, r *http.Request) Response {
-	return nil
-}
-
-var storageVolumesCmd = Command{name: "storage-pools/{name}/volumes", get: storageVolumesGet, post: storageVolumesPost}
-
-// /1.0/storage-pools/<pool-name>/volumes/volume name>
-func storageVolumeGet(d *Daemon, r *http.Request) Response {
-	return nil
-}
-
-func storageVolumePost(d *Daemon, r *http.Request) Response {
-	return nil
-}
-
-func storageVolumePut(d *Daemon, r *http.Request) Response {
-	return nil
-}
-
-func storageVolumePatch(d *Daemon, r *http.Request) Response {
-	return nil
-}
-
-func storageVolumeDelete(d *Daemon, r *http.Request) Response {
-	return nil
-}
-
-var storageVolumeCmd = Command{name: "storage-pools/{name}/volumes/{name}", get: storageVolumeGet, post: storageVolumePost, put: storageVolumePut, patch: storageVolumePatch, delete: storageVolumeDelete}
 
 // The storage pool structs and functions
 type storagePool struct {
