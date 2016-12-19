@@ -219,9 +219,9 @@ var storagePoolCmd = Command{name: "storage-pools/{pool_name}", get: storagePool
 // The storage pool structs and functions
 type storagePool struct {
 	// Properties
-	daemon *Daemon
-	id     int64
-	poolName   string
+	daemon   *Daemon
+	id       int64
+	poolName string
 
 	// config
 	config map[string]string

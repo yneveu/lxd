@@ -46,8 +46,8 @@ func dbStoragePoolGet(db *sql.DB, pool string) (int64, *shared.StoragePoolConfig
 	}
 
 	return id, &shared.StoragePoolConfig{
-		PoolName:   pool,
-		Config: config,
+		PoolName: pool,
+		Config:   config,
 	}, nil
 }
 

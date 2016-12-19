@@ -46,8 +46,8 @@ func dbStorageVolumeGet(db *sql.DB, volume string) (int64, *shared.StorageVolume
 	}
 
 	return id, &shared.StorageVolumeConfig{
-		PoolName:   volume,
-		Config: config,
+		PoolName: volume,
+		Config:   config,
 	}, nil
 }
 
@@ -57,7 +57,7 @@ func dbStorageVolumeConfigGet(db *sql.DB, id int64) (map[string]string, error) {
 	query := `
         SELECT
             key, value
-        FROM storage_volumes
+        FROM storage_volumes_config
 		WHERE storage_volume_id=?`
 	inargs := []interface{}{id}
 	outfmt := []interface{}{key, value}

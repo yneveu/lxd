@@ -104,11 +104,11 @@ func (c *storageCmd) run(config *lxd.Config, args []string) error {
 			volume := args[3]
 			return c.doStorageVolumeCreate(client, pool, volume, args[4:])
 		// case "delete":
-			// return c.doStoragePoolDelete(client, pool)
-			// case "detach":
-			// 	return c.doNetworkDetach(client, network, args[2:])
-			// case "detach-profile":
-			// 	return c.doNetworkDetachProfile(client, network, args[2:])
+		// return c.doStoragePoolDelete(client, pool)
+		// case "detach":
+		// 	return c.doNetworkDetach(client, network, args[2:])
+		// case "detach-profile":
+		// 	return c.doNetworkDetachProfile(client, network, args[2:])
 		// case "edit":
 		// 	return c.doStoragePoolEdit(client, pool)
 		// case "get":
