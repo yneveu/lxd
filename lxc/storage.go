@@ -83,7 +83,7 @@ func (c *storageCmd) run(config *lxd.Config, args []string) error {
 		return errArgs
 	}
 
-	remote, pool := config.ParseRemoteAndContainer(args[1])
+	remote, sub := config.ParseRemoteAndContainer(args[1])
 	client, err := lxd.NewClient(config, remote)
 	if err != nil {
 		return err
@@ -99,12 +99,12 @@ func (c *storageCmd) run(config *lxd.Config, args []string) error {
 			if len(args) < 4 {
 				return errArgs
 			}
-			fmt.Println("AAA")
-			return nil
 			// driver := strings.Join(args[2:3], "")
-			// return c.doStoragePoolCreate(client, pool, driver, args[3:])
-		case "delete":
-			return c.doStoragePoolDelete(client, pool)
+			pool := args[2]
+			volume := args[3]
+			return c.doStorageVolumeCreate(client, pool, volume, args[4:])
+		// case "delete":
+			// return c.doStoragePoolDelete(client, pool)
 			// case "detach":
 			// 	return c.doNetworkDetach(client, network, args[2:])
 			// case "detach-profile":
@@ -135,6 +135,7 @@ func (c *storageCmd) run(config *lxd.Config, args []string) error {
 			return errArgs
 		}
 	} else {
+		pool := sub
 		switch args[0] {
 		// case "attach":
 		// 	return c.doNetworkAttach(client, network, args[2:])
@@ -465,7 +466,7 @@ func (c *storageCmd) doStoragePoolsList(config *lxd.Config, args []string) error
 
 	data := [][]string{}
 	for _, pool := range pools {
-		data = append(data, []string{pool.Name, pool.Config["driver"], pool.Config["size"], pool.Config["source"]})
+		data = append(data, []string{pool.PoolName, pool.Config["driver"], pool.Config["size"], pool.Config["source"]})
 	}
 
 	table := tablewriter.NewWriter(os.Stdout)
@@ -526,4 +527,23 @@ func (c *storageCmd) doStoragePoolShow(client *lxd.Client, name string) error {
 	fmt.Printf("%s", data)
 
 	return nil
+}
+
+func (c *storageCmd) doStorageVolumeCreate(client *lxd.Client, pool string, volume string, args []string) error {
+	config := map[string]string{}
+
+	for i := 0; i < len(args); i++ {
+		entry := strings.SplitN(args[i], "=", 2)
+		if len(entry) < 2 {
+			return errArgs
+		}
+		config[entry[0]] = entry[1]
+	}
+
+	err := client.StorageVolumeCreate(pool, volume, config)
+	if err == nil {
+		fmt.Printf(i18n.G("Storage volume %s created")+"\n", volume)
+	}
+
+	return err
 }

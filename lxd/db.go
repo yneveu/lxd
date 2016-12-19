@@ -191,8 +191,8 @@ CREATE TABLE IF NOT EXISTS schema (
 );
 CREATE TABLE IF NOT EXISTS storage_pools (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    UNIQUE (name)
+    pool_name VARCHAR(255) NOT NULL,
+    UNIQUE (pool_name)
 );
 CREATE TABLE IF NOT EXISTS storage_pools_config (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -201,6 +201,19 @@ CREATE TABLE IF NOT EXISTS storage_pools_config (
     value TEXT,
     UNIQUE (storage_pool_id, key),
     FOREIGN KEY (storage_pool_id) REFERENCES storage_pools (id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS storage_volumes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    volume_name VARCHAR(255) NOT NULL,
+    UNIQUE (volume_name)
+);
+CREATE TABLE IF NOT EXISTS storage_volumes_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    storage_volume_id INTEGER NOT NULL,
+    key VARCHAR(255) NOT NULL,
+    value TEXT,
+    UNIQUE (storage_volume_id, key),
+    FOREIGN KEY (storage_volume_id) REFERENCES storage_volumes (id) ON DELETE CASCADE
 );`
 
 // Create the initial (current) schema for a given SQLite DB connection.

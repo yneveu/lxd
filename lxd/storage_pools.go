@@ -59,11 +59,11 @@ func storagePoolsPost(d *Daemon, r *http.Request) Response {
 	}
 
 	// Sanity checks
-	if req.Name == "" {
+	if req.PoolName == "" {
 		return BadRequest(fmt.Errorf("No name provided"))
 	}
 
-	err = storageValidName(req.Name)
+	err = storageValidName(req.PoolName)
 	if err != nil {
 		return BadRequest(err)
 	}
@@ -74,7 +74,7 @@ func storagePoolsPost(d *Daemon, r *http.Request) Response {
 		return InternalError(err)
 	}
 
-	if shared.StringInSlice(req.Name, pools) {
+	if shared.StringInSlice(req.PoolName, pools) {
 		return Conflict
 	}
 
@@ -84,20 +84,20 @@ func storagePoolsPost(d *Daemon, r *http.Request) Response {
 	}
 
 	// Validate the requested storage pool configuration.
-	err = storagePoolValidateConfig(req.Name, req.Config)
+	err = storagePoolValidateConfig(req.PoolName, req.Config)
 	if err != nil {
 		return BadRequest(err)
 	}
 
 	// Create the database entry for the storage pool.
-	_, err = dbStoragePoolCreate(d.db, req.Name, req.Config)
+	_, err = dbStoragePoolCreate(d.db, req.PoolName, req.Config)
 	if err != nil {
 		return InternalError(
-			fmt.Errorf("Error inserting %s into database: %s", req.Name, err))
+			fmt.Errorf("Error inserting %s into database: %s", req.PoolName, err))
 	}
 
 	// Load the storage pool from teh database.
-	s, err := storagePoolLoadByName(d, req.Name)
+	s, err := storagePoolLoadByName(d, req.PoolName)
 	if err != nil {
 		return InternalError(err)
 	}
@@ -109,28 +109,28 @@ func storagePoolsPost(d *Daemon, r *http.Request) Response {
 		return InternalError(err)
 	}
 
-	return SyncResponseLocation(true, nil, fmt.Sprintf("/%s/storage-pools/%s", shared.APIVersion, req.Name))
+	return SyncResponseLocation(true, nil, fmt.Sprintf("/%s/storage-pools/%s", shared.APIVersion, req.PoolName))
 }
 
 var storagePoolsCmd = Command{name: "storage-pools", get: storagePoolsGet, post: storagePoolsPost}
 
 // /1.0/storage-pools/<pool name>
 func storagePoolGet(d *Daemon, r *http.Request) Response {
-	name := mux.Vars(r)["name"]
+	name := mux.Vars(r)["pool_name"]
 
 	s, err := doStoragePoolGet(d, name)
 	if err != nil {
 		return SmartError(err)
 	}
 
-	etag := []interface{}{s.Name, s.UsedBy, s.Config}
+	etag := []interface{}{s.PoolName, s.UsedBy, s.Config}
 
 	return SyncResponseETag(true, &s, etag)
 }
 
 func storagePoolPost(d *Daemon, r *http.Request) Response {
-	name := mux.Vars(r)["name"]
-	req := shared.NetworkConfig{}
+	name := mux.Vars(r)["pool_name"]
+	req := shared.StoragePoolConfig{}
 
 	// Parse the request.
 	err := json.NewDecoder(r.Body).Decode(&req)
@@ -145,26 +145,26 @@ func storagePoolPost(d *Daemon, r *http.Request) Response {
 	}
 
 	// Sanity checks.
-	if req.Name == "" {
+	if req.PoolName == "" {
 		return BadRequest(fmt.Errorf("No name provided"))
 	}
 
-	err = storageValidName(req.Name)
+	err = storageValidName(req.PoolName)
 	if err != nil {
 		return BadRequest(err)
 	}
 
 	// Rename it
-	err = s.storagePoolRename(req.Name)
+	err = s.storagePoolRename(req.PoolName)
 	if err != nil {
 		return SmartError(err)
 	}
 
-	return SyncResponseLocation(true, nil, fmt.Sprintf("/%s/networks/%s", shared.APIVersion, req.Name))
+	return SyncResponseLocation(true, nil, fmt.Sprintf("/%s/networks/%s", shared.APIVersion, req.PoolName))
 }
 
 func storagePoolPut(d *Daemon, r *http.Request) Response {
-	name := mux.Vars(r)["name"]
+	name := mux.Vars(r)["pool_name"]
 
 	// Get the existing storage pool.
 	_, dbInfo, err := dbStoragePoolGet(d.db, name)
@@ -173,7 +173,7 @@ func storagePoolPut(d *Daemon, r *http.Request) Response {
 	}
 
 	// Validate the ETag
-	etag := []interface{}{dbInfo.Name, dbInfo.UsedBy, dbInfo.Config}
+	etag := []interface{}{dbInfo.PoolName, dbInfo.UsedBy, dbInfo.Config}
 
 	err = etagCheck(r, etag)
 	if err != nil {
@@ -193,7 +193,7 @@ func storagePoolPatch(d *Daemon, r *http.Request) Response {
 }
 
 func storagePoolDelete(d *Daemon, r *http.Request) Response {
-	name := mux.Vars(r)["name"]
+	name := mux.Vars(r)["pool_name"]
 
 	// Get the existing storage pool.
 	s, err := storagePoolLoadByName(d, name)
@@ -214,14 +214,14 @@ func storagePoolDelete(d *Daemon, r *http.Request) Response {
 	return EmptySyncResponse
 }
 
-var storagePoolCmd = Command{name: "storage-pools/{name}", get: storagePoolGet, post: storagePoolPost, put: storagePoolPut, patch: storagePoolPatch, delete: storagePoolDelete}
+var storagePoolCmd = Command{name: "storage-pools/{pool_name}", get: storagePoolGet, post: storagePoolPost, put: storagePoolPut, patch: storagePoolPatch, delete: storagePoolDelete}
 
 // The storage pool structs and functions
 type storagePool struct {
 	// Properties
 	daemon *Daemon
 	id     int64
-	name   string
+	poolName   string
 
 	// config
 	config map[string]string
@@ -233,7 +233,7 @@ func storagePoolLoadByName(d *Daemon, name string) (*storagePool, error) {
 		return nil, err
 	}
 
-	s := storagePool{daemon: d, id: id, name: name, config: dbInfo.Config}
+	s := storagePool{daemon: d, id: id, poolName: name, config: dbInfo.Config}
 
 	return &s, nil
 }
@@ -261,7 +261,7 @@ func (s *storagePool) storagePoolCreate() error {
 			s.config["size"] = size
 		}
 
-		if err := dbStoragePoolUpdate(s.daemon.db, s.name, s.config); err != nil {
+		if err := dbStoragePoolUpdate(s.daemon.db, s.poolName, s.config); err != nil {
 			return fmt.Errorf("Failed to update database")
 		}
 	}
@@ -276,7 +276,7 @@ func (s *storagePool) storagePoolCreate() error {
 func (s *storagePool) zfsPoolCreate() error {
 	vdev := s.config["source"]
 	if vdev == "" {
-		vdev = shared.VarPath(s.name)
+		vdev = shared.VarPath(s.poolName)
 	}
 
 	out, err := exec.LookPath("zfs")
@@ -337,7 +337,7 @@ func (s *storagePool) zfsPoolCreate() error {
 
 	zpoolName := s.config["zfs.pool_name"]
 	if zpoolName == "" {
-		zpoolName = s.name
+		zpoolName = s.poolName
 	}
 
 	output, err := exec.Command(
@@ -354,7 +354,7 @@ func (s *storagePool) zfsPoolCreate() error {
 func (s *storagePool) zfsPoolDelete() error {
 	zpoolName := s.config["zfs.pool_name"]
 	if zpoolName == "" {
-		zpoolName = s.name
+		zpoolName = s.poolName
 	}
 
 	// TODO: Check if any containers or images are using the pool.
@@ -451,13 +451,13 @@ func (s *storagePool) zfsPoolRename(oldname string, newname string, poolOnly boo
 
 func (s *storagePool) storagePoolRename(name string) error {
 	// Rename the database entry
-	err := dbStoragePoolRename(s.daemon.db, s.name, name)
+	err := dbStoragePoolRename(s.daemon.db, s.poolName, name)
 	if err != nil {
 		return err
 	}
 
 	if s.config["driver"] == "zfs" {
-		return s.zfsPoolRename(s.name, name, s.config["zfs.pool_name"] == "")
+		return s.zfsPoolRename(s.poolName, name, s.config["zfs.pool_name"] == "")
 	}
 
 	return nil
@@ -558,7 +558,7 @@ func (s *storagePool) zfsPoolUpdate(newPool shared.StoragePoolConfig) error {
 	s.config = newConfig
 
 	// Update the database
-	err = dbStoragePoolUpdate(s.daemon.db, s.name, s.config)
+	err = dbStoragePoolUpdate(s.daemon.db, s.poolName, s.config)
 	if err != nil {
 		return err
 	}

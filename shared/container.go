@@ -163,7 +163,7 @@ type NetworkConfig struct {
 
 type StoragePoolConfig struct {
 	// name of storage pool
-	Name   string            `json:"name"`
+	PoolName   string            `json:"pool_name"`
 	Config map[string]string `json:"config"`
 	// containers that use this storage pool
 	UsedBy []string `json:"used_by"`
@@ -171,7 +171,8 @@ type StoragePoolConfig struct {
 
 type StorageVolumeConfig struct {
 	// name of storage volume
-	Name   string            `json:"name"`
+	PoolName   string            `json:"pool_name"`
+	VolumeName   string            `json:"volume_name"`
 	Config map[string]string `json:"config"`
 	// containers that use this storage pool
 	UsedBy []string `json:"used_by"`

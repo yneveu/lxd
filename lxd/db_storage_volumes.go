@@ -9,9 +9,9 @@ import (
 	"github.com/lxc/lxd/shared"
 )
 
-// Get all storage pools.
-func dbStoragePools(db *sql.DB) ([]string, error) {
-	q := fmt.Sprintf("SELECT pool_name FROM storage_pools")
+// Get all storage volumes.
+func dbStorageVolumes(db *sql.DB) ([]string, error) {
+	q := fmt.Sprintf("SELECT volume_name FROM storage_volumes")
 	inargs := []interface{}{}
 	var name string
 	outfmt := []interface{}{name}
@@ -28,51 +28,51 @@ func dbStoragePools(db *sql.DB) ([]string, error) {
 	return response, nil
 }
 
-// Get a single storage pool.
-func dbStoragePoolGet(db *sql.DB, pool string) (int64, *shared.StoragePoolConfig, error) {
+// Get a single storage volume.
+func dbStorageVolumeGet(db *sql.DB, volume string) (int64, *shared.StorageVolumeConfig, error) {
 	id := int64(-1)
 
-	q := "SELECT id FROM storage_pools WHERE pool_name=?"
-	arg1 := []interface{}{pool}
+	q := "SELECT id FROM storage_volumes WHERE volume_name=?"
+	arg1 := []interface{}{volume}
 	arg2 := []interface{}{&id}
 	err := dbQueryRowScan(db, q, arg1, arg2)
 	if err != nil {
 		return -1, nil, err
 	}
 
-	config, err := dbStoragePoolConfigGet(db, id)
+	config, err := dbStorageVolumeConfigGet(db, id)
 	if err != nil {
 		return -1, nil, err
 	}
 
-	return id, &shared.StoragePoolConfig{
-		PoolName:   pool,
+	return id, &shared.StorageVolumeConfig{
+		PoolName:   volume,
 		Config: config,
 	}, nil
 }
 
-// Get config of a storage pool.
-func dbStoragePoolConfigGet(db *sql.DB, id int64) (map[string]string, error) {
+// Get config of a storage volume.
+func dbStorageVolumeConfigGet(db *sql.DB, id int64) (map[string]string, error) {
 	var key, value string
 	query := `
         SELECT
             key, value
-        FROM storage_pools_config
-		WHERE storage_pool_id=?`
+        FROM storage_volumes
+		WHERE storage_volume_id=?`
 	inargs := []interface{}{id}
 	outfmt := []interface{}{key, value}
 	results, err := dbQueryScan(db, query, inargs, outfmt)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get storage pool '%d'", id)
+		return nil, fmt.Errorf("Failed to get storage volume '%d'", id)
 	}
 
 	if len(results) == 0 {
 		/*
 		 * If we didn't get any rows here, let's check to make sure the
-		 * storage pool really exists; if it doesn't, let's send back a
-		 * 404.
+		 * storage volume really exists; if it doesn't, let's send back
+		 * a 404.
 		 */
-		query := "SELECT id FROM storage_pools WHERE id=?"
+		query := "SELECT id FROM storage_volumes WHERE id=?"
 		var r int
 		results, err := dbQueryScan(db, query, []interface{}{id}, []interface{}{r})
 		if err != nil {
@@ -96,14 +96,14 @@ func dbStoragePoolConfigGet(db *sql.DB, id int64) (map[string]string, error) {
 	return config, nil
 }
 
-// Create new storage pool table.
-func dbStoragePoolCreate(db *sql.DB, name string, config map[string]string) (int64, error) {
+// Create new storage volume table.
+func dbStorageVolumeCreate(db *sql.DB, name string, config map[string]string) (int64, error) {
 	tx, err := dbBegin(db)
 	if err != nil {
 		return -1, err
 	}
 
-	result, err := tx.Exec("INSERT INTO storage_pools (pool_name) VALUES (?)", name)
+	result, err := tx.Exec("INSERT INTO storage_volumes (volume_name) VALUES (?)", name)
 	if err != nil {
 		tx.Rollback()
 		return -1, err
@@ -115,7 +115,7 @@ func dbStoragePoolCreate(db *sql.DB, name string, config map[string]string) (int
 		return -1, err
 	}
 
-	err = dbStoragePoolConfigAdd(tx, id, config)
+	err = dbStorageVolumeConfigAdd(tx, id, config)
 	if err != nil {
 		tx.Rollback()
 		return -1, err
@@ -129,9 +129,9 @@ func dbStoragePoolCreate(db *sql.DB, name string, config map[string]string) (int
 	return id, nil
 }
 
-// Add new storage pool config into database.
-func dbStoragePoolConfigAdd(tx *sql.Tx, id int64, config map[string]string) error {
-	str := fmt.Sprintf("INSERT INTO storage_pools_config (storage_pool_id, key, value) VALUES(?, ?, ?)")
+// Add new storage volume config into database.
+func dbStorageVolumeConfigAdd(tx *sql.Tx, id int64, config map[string]string) error {
+	str := fmt.Sprintf("INSERT INTO storage_volumes_config (storage_volume_id, key, value) VALUES(?, ?, ?)")
 	stmt, err := tx.Prepare(str)
 	defer stmt.Close()
 
@@ -149,9 +149,9 @@ func dbStoragePoolConfigAdd(tx *sql.Tx, id int64, config map[string]string) erro
 	return nil
 }
 
-// Update storage pool.
-func dbStoragePoolUpdate(db *sql.DB, name string, config map[string]string) error {
-	id, _, err := dbStoragePoolGet(db, name)
+// Update storage volume.
+func dbStorageVolumeUpdate(db *sql.DB, name string, config map[string]string) error {
+	id, _, err := dbStorageVolumeGet(db, name)
 	if err != nil {
 		return err
 	}
@@ -161,13 +161,13 @@ func dbStoragePoolUpdate(db *sql.DB, name string, config map[string]string) erro
 		return err
 	}
 
-	err = dbStoragePoolConfigClear(tx, id)
+	err = dbStorageVolumeConfigClear(tx, id)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	err = dbStoragePoolConfigAdd(tx, id, config)
+	err = dbStorageVolumeConfigAdd(tx, id, config)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -176,9 +176,9 @@ func dbStoragePoolUpdate(db *sql.DB, name string, config map[string]string) erro
 	return txCommit(tx)
 }
 
-// Delete storage pool config.
-func dbStoragePoolConfigClear(tx *sql.Tx, id int64) error {
-	_, err := tx.Exec("DELETE FROM storage_pools_config WHERE storage_pool_id=?", id)
+// Delete storage volume config.
+func dbStorageVolumeConfigClear(tx *sql.Tx, id int64) error {
+	_, err := tx.Exec("DELETE FROM storage_volumes_config WHERE storage_volume_id=?", id)
 	if err != nil {
 		return err
 	}
@@ -186,9 +186,9 @@ func dbStoragePoolConfigClear(tx *sql.Tx, id int64) error {
 	return nil
 }
 
-// Delete storage pool
-func dbStoragePoolDelete(db *sql.DB, name string) error {
-	id, _, err := dbStoragePoolGet(db, name)
+// Delete storage volume.
+func dbStorageVolumeDelete(db *sql.DB, name string) error {
+	id, _, err := dbStorageVolumeGet(db, name)
 	if err != nil {
 		return err
 	}
@@ -198,13 +198,13 @@ func dbStoragePoolDelete(db *sql.DB, name string) error {
 		return err
 	}
 
-	_, err = tx.Exec("DELETE FROM storage_pools WHERE id=?", id)
+	_, err = tx.Exec("DELETE FROM storage_volumes WHERE id=?", id)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	err = dbStoragePoolConfigClear(tx, id)
+	err = dbStorageVolumeConfigClear(tx, id)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -213,9 +213,9 @@ func dbStoragePoolDelete(db *sql.DB, name string) error {
 	return txCommit(tx)
 }
 
-// Rename storage pool.
-func dbStoragePoolRename(db *sql.DB, oldName string, newName string) error {
-	id, _, err := dbStoragePoolGet(db, oldName)
+// Rename storage volume.
+func dbStorageVolumeRename(db *sql.DB, oldName string, newName string) error {
+	id, _, err := dbStorageVolumeGet(db, oldName)
 	if err != nil {
 		return err
 	}
@@ -225,7 +225,7 @@ func dbStoragePoolRename(db *sql.DB, oldName string, newName string) error {
 		return err
 	}
 
-	_, err = tx.Exec("UPDATE storage_pools SET pool_name=? WHERE id=?", newName, id)
+	_, err = tx.Exec("UPDATE storage_volumes SET volume_name=? WHERE id=?", newName, id)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -234,12 +234,12 @@ func dbStoragePoolRename(db *sql.DB, oldName string, newName string) error {
 	return txCommit(tx)
 }
 
-// func dbStoragePoolGetPool(db *sql.DB, devName string) (int64, *shared.NetworkConfig, error) {
+// func dbStorageVolumeGetVolume(db *sql.DB, devName string) (int64, *shared.NetworkConfig, error) {
 // 	id := int64(-1)
 // 	name := ""
 // 	value := ""
 //
-// 	q := "SELECT storage_pools.id, storage_pools.name, storage_pools_config.value FROM storage_pools LEFT JOIN storage_pools_config ON networks.id=storage_pools_config.network_id WHERE storage_pools_config.key=\"bridge.external_interfaces\""
+// 	q := "SELECT storage_volumes.id, storage_volumes.name, storage_volumes_config.value FROM storage_volumes LEFT JOIN storage_volumes_config ON networks.id=storage_volumes_config.network_id WHERE storage_volumes_config.key=\"bridge.external_interfaces\""
 // 	arg1 := []interface{}{}
 // 	arg2 := []interface{}{id, name, value}
 // 	result, err := dbQueryScan(db, q, arg1, arg2)

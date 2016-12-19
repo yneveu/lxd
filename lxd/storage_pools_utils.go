@@ -27,11 +27,11 @@ func doStoragePoolGet(d *Daemon, name string) (shared.StoragePoolConfig, error) 
 
 	// Prepare the response
 	s := shared.StoragePoolConfig{}
-	s.Name = name
+	s.PoolName = name
 	s.UsedBy = []string{}
 	s.Config = map[string]string{}
 
-	s.Name = pool.Name
+	s.PoolName = pool.PoolName
 	s.Config = pool.Config
 
 	// Look for containers using this storage pool.

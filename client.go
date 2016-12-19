@@ -2852,7 +2852,7 @@ func (c *Client) StoragePoolCreate(name string, config map[string]string) error 
 		return fmt.Errorf("This function isn't supported by public remotes.")
 	}
 
-	body := shared.Jmap{"name": name, "config": config}
+	body := shared.Jmap{"pool_name": name, "config": config}
 
 	_, err := c.post("storage-pools", body, Sync)
 	return err
@@ -2890,10 +2890,21 @@ func (c *Client) StoragePoolPut(name string, pool shared.StoragePoolConfig) erro
 		return fmt.Errorf("This function isn't supported by public remotes.")
 	}
 
-	if pool.Name != name {
+	if pool.PoolName != name {
 		return fmt.Errorf("Cannot change storage pool name")
 	}
 
 	_, err := c.put(fmt.Sprintf("storage-pools/%s", name), pool, Sync)
+	return err
+}
+
+func (c *Client) StorageVolumeCreate(pool string, volume string, config map[string]string) error {
+	if c.Remote.Public {
+		return fmt.Errorf("This function isn't supported by public remotes.")
+	}
+
+	body := shared.Jmap{"pool_name": pool, "volume_name": volume, "config": config}
+
+	_, err := c.post(fmt.Sprintf("storage-pools/%s/volumes", pool), body, Sync)
 	return err
 }
