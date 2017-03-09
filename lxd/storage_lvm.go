@@ -623,7 +623,7 @@ func (s *storageLvm) StoragePoolDelete() error {
 
 	poolName := s.getOnDiskPoolName()
 	// Remove the volume group.
-	output, err := shared.RunCommand("vgremove", "-f", poolName)
+	output, err := shared.RunCommand("vgremove", "-ff", poolName)
 	if err != nil {
 		return fmt.Errorf("Failed to destroy the volume group for the lvm storage pool: %s.", output)
 	}
