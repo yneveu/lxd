@@ -434,13 +434,32 @@ func storagePoolVolumeAttachInit(d *Daemon, poolName string, volumeName string, 
 
 	if !reflect.DeepEqual(nextIdmap, lastIdmap) {
 		logger.Debugf("Shifting storage volume")
-		volumeUsedBy, err := storagePoolVolumeUsedByGet(d, volumeName, volumeTypeName)
+		volumeUsedBy, err := storagePoolVolumeUsedByContainersGet(d,
+			volumeName, volumeTypeName)
 		if err != nil {
 			return nil, err
 		}
 
 		if len(volumeUsedBy) > 1 {
-			return nil, fmt.Errorf("idmaps of container and storage volume are not identical")
+			for _, ct := range volumeUsedBy {
+				c, err := containerLoadByName(d, ct)
+				if err != nil {
+					continue
+				}
+
+				if c.IsRunning() {
+					return nil, fmt.Errorf("idmaps of container and storage volume are not identical")
+				}
+
+				ctNextIdmap, err := c.IdmapSet()
+				if err != nil {
+					return nil, fmt.Errorf("idmaps of container and storage volume are not identical")
+				}
+
+				if !reflect.DeepEqual(nextIdmap, ctNextIdmap) {
+					return nil, fmt.Errorf("idmaps of container and storage volume are not identical")
+				}
+			}
 		} else if len(volumeUsedBy) == 1 {
 			// If we're the only one who's attached that container
 			// we can shift the storage volume.
