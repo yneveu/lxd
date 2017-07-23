@@ -10,6 +10,10 @@ Key                             | Type      | Condition                         
 size                            | string    | appropriate driver and source     | 0                          | Size of the storage pool in bytes (suffixes supported). (Currently valid for loop based pools and zfs.)
 source                          | string    | -                                 | -                          | Path to block device or loop file or filesystem entry
 btrfs.mount\_options            | string    | btrfs driver                      | user\_subvol\_rm\_allowed  | Mount options for block devices
+ceph.cluster\_name              | string    | ceph driver                       | ceph                       | Name of the ceph cluster in which to create new storage pools.
+ceph.osd.pool\_name             | string    | ceph driver                       | name of the pool           | Name of the osd storage pool.
+ceph.osd.pg\_num                | string    | ceph driver                       | 32                         | Number of placement groups for the osd storage pool.
+ceph.rbd.clone\_copy            | string    | ceph driver                       | true                       | Whether to use RBD lightweight clones rather than full dataset copies.
 lvm.thinpool\_name              | string    | lvm driver                        | LXDPool                    | Thin pool where images and containers are created.
 lvm.use\_thinpool               | bool      | lvm driver                        | true                       | Whether the storage pool uses a thinpool for logical volumes.
 lvm.vg\_name                    | string    | lvm driver                        | name of the pool           | Name of the volume group to create.
@@ -78,7 +82,7 @@ As it would be wasteful to prepare such a volume on a storage pool that may neve
 the volume is generated on demand, causing the first container to take longer to create than subsequent ones.
 
 ## Optimized container transfer
-ZFS and btrfs both have an internal send/receive mechanism which allows for optimized volume transfer.  
+ZFS, btrfs and CEPH RBD have an internal send/receive mechanisms which allow for optimized volume transfer.  
 LXD uses those features to transfer containers and snapshots between servers.
 
 When such capabilities aren't available, either because the storage driver doesn't support it  
@@ -145,6 +149,48 @@ lxc storage create pool1 dir
 
 ```
 lxc storage create pool2 dir source=/data/lxd
+```
+
+### CEPH
+
+- Uses RBD images for images, then snapshots and clones to create containers
+  and snapshots.
+- Due to the way copy-on-write works in RBD, parent filesystems can't be
+  removed until all children are gone. As a result, LXD will automatically
+  prefix any removed but still referenced object with "zombie_" and keep it
+  until such time the references are gone and it can safely be removed.
+- Note that LXD will assume it has full control over the osd storage pool.
+  It is recommended to not maintain any non-LXD owned filesystem entities in
+  a LXD OSD storage pool since LXD might delete them.
+- Note that sharing the same osd storage pool between multiple LXD instances is
+  not supported. LXD only allows sharing of an OSD storage pool between
+  multiple LXD instances only for backup purposes of existing containers via
+  `lxd import`.
+
+#### The following commands can be used to create ZFS storage pools
+
+- Create a osd storage pool named "pool1" in the CEPH cluster "ceph".
+
+```
+lxc storage create pool1 ceph
+```
+
+- Create a osd storage pool named "pool1" in the CEPH cluster "my-cluster".
+
+```
+lxc storage create pool1 ceph ceph.cluster\_name=my-cluster
+```
+
+- Create a osd storage pool named "pool1" with the on-disk name "my-osd".
+
+```
+lxc storage create pool1 ceph ceph.osd.pool\_name=my-osd
+```
+
+- Use the existing osd storage pool "my-already-existing-osd".
+
+```
+lxc storage create pool1 ceph source=my-already-existing-osd
 ```
 
 ### Btrfs
